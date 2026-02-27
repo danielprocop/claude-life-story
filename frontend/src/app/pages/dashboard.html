@@ -1,0 +1,120 @@
+<div class="dashboard-page">
+  <h2>Dashboard</h2>
+
+  @if (loading()) {
+    <p class="loading">Caricamento...</p>
+  } @else if (data(); as d) {
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-value">{{ d.stats.totalEntries }}</span>
+        <span class="stat-label">Entry totali</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ d.stats.totalConcepts }}</span>
+        <span class="stat-label">Concetti estratti</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ d.stats.activeGoals }}</span>
+        <span class="stat-label">Obiettivi attivi</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value">{{ d.stats.insightsGenerated }}</span>
+        <span class="stat-label">Insight generati</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" [style.color]="getEnergyColor(d.stats.avgEnergy)">{{ d.stats.avgEnergy }}</span>
+        <span class="stat-label">Energia media</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" [style.color]="getStressColor(d.stats.avgStress)">{{ d.stats.avgStress }}</span>
+        <span class="stat-label">Stress medio</span>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>Energia / Stress (ultimi 14 giorni)</h3>
+        @if (d.energyTrend.length > 0) {
+          <div class="energy-bars">
+            @for (point of d.energyTrend; track point.date) {
+              <div class="energy-bar-group">
+                <div class="bar-container">
+                  <div class="bar energy-bar" [style.height.%]="point.energy * 10" [style.background]="getEnergyColor(point.energy)"></div>
+                  <div class="bar stress-bar" [style.height.%]="point.stress * 10" [style.background]="getStressColor(point.stress)"></div>
+                </div>
+                <span class="bar-date">{{ point.date | date:'dd/MM' }}</span>
+              </div>
+            }
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="dot" style="background:#22c55e"></span> Energia</span>
+            <span class="legend-item"><span class="dot" style="background:#ef4444"></span> Stress</span>
+          </div>
+        } @else {
+          <p class="empty">Nessun dato energia ancora disponibile.</p>
+        }
+      </div>
+
+      <div class="card">
+        <h3>Concetti principali</h3>
+        @if (d.topConcepts.length > 0) {
+          <div class="concept-list">
+            @for (c of d.topConcepts; track c.id) {
+              <div class="concept-item">
+                <span class="concept-label">{{ c.label }}</span>
+                <span class="concept-badge" [attr.data-type]="c.type">{{ c.type }}</span>
+                <span class="concept-count">{{ c.entryCount }}x</span>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty">Nessun concetto estratto.</p>
+        }
+      </div>
+
+      <div class="card">
+        <h3>Obiettivi attivi</h3>
+        @if (d.activeGoals.length > 0) {
+          @for (g of d.activeGoals; track g.id) {
+            <div class="goal-item">
+              <span class="goal-title">{{ g.title }}</span>
+              @if (g.description) {
+                <span class="goal-desc">{{ g.description }}</span>
+              }
+            </div>
+          }
+        } @else {
+          <p class="empty">Nessun obiettivo attivo. <a routerLink="/goals">Crea un obiettivo</a></p>
+        }
+      </div>
+
+      <div class="card">
+        <h3>Insight recenti</h3>
+        @if (d.recentInsights.length > 0) {
+          @for (i of d.recentInsights; track i.id) {
+            <div class="insight-item">
+              <span class="insight-type" [attr.data-type]="i.type">{{ i.type }}</span>
+              <p>{{ i.content }}</p>
+            </div>
+          }
+        } @else {
+          <p class="empty">Nessun insight ancora. Scrivi alcune entry per generarli.</p>
+        }
+      </div>
+
+      <div class="card full-width">
+        <h3>Entry recenti</h3>
+        @if (d.recentEntries.length > 0) {
+          @for (e of d.recentEntries; track e.id) {
+            <div class="entry-item">
+              <span class="entry-date">{{ e.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+              <p>{{ e.contentPreview }}</p>
+            </div>
+          }
+        } @else {
+          <p class="empty">Nessuna entry. <a routerLink="/write">Scrivi la prima!</a></p>
+        }
+      </div>
+    </div>
+  }
+</div>

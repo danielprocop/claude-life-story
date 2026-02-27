@@ -74,6 +74,85 @@ export interface GoalTimelineEntry {
   signal: string;
 }
 
+export interface ChatResponse {
+  answer: string;
+  sources: ChatSourceEntry[];
+}
+
+export interface ChatSourceEntry {
+  entryId: string;
+  preview: string;
+  date: string;
+  similarity: number;
+}
+
+export interface ChatHistoryItem {
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface EnergyTrendResponse {
+  dataPoints: EnergyDataPoint[];
+  avgEnergy: number;
+  avgStress: number;
+  topEmotions: string[];
+  correlations: EnergyCorrelation[];
+}
+
+export interface EnergyDataPoint {
+  date: string;
+  energy: number;
+  stress: number;
+  emotion: string | null;
+}
+
+export interface EnergyCorrelation {
+  factor: string;
+  effect: string;
+  confidence: number;
+}
+
+export interface GoalItemResponse {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  createdAt: string;
+  completedAt: string | null;
+  parentGoalId: string | null;
+  subGoals: GoalItemResponse[];
+}
+
+export interface DashboardResponse {
+  stats: DashboardStats;
+  energyTrend: EnergyDataPoint[];
+  topConcepts: ConceptResponse[];
+  activeGoals: GoalItemResponse[];
+  recentInsights: InsightResponse[];
+  recentEntries: EntryListResponse[];
+}
+
+export interface DashboardStats {
+  totalEntries: number;
+  totalConcepts: number;
+  activeGoals: number;
+  insightsGenerated: number;
+  avgEnergy: number;
+  avgStress: number;
+}
+
+export interface ReviewResponse {
+  summary: string;
+  period: string;
+  keyThemes: string[];
+  accomplishments: string[];
+  challenges: string[];
+  patterns: string[];
+  suggestions: string[];
+  generatedAt: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -110,5 +189,45 @@ export class Api {
 
   getGoals(): Observable<GoalResponse[]> {
     return this.http.get<GoalResponse[]>(`${this.baseUrl}/goals`);
+  }
+
+  sendChatMessage(message: string): Observable<ChatResponse> {
+    return this.http.post<ChatResponse>(`${this.baseUrl}/chat`, { message });
+  }
+
+  getChatHistory(): Observable<ChatHistoryItem[]> {
+    return this.http.get<ChatHistoryItem[]>(`${this.baseUrl}/chat/history`);
+  }
+
+  getDashboard(): Observable<DashboardResponse> {
+    return this.http.get<DashboardResponse>(`${this.baseUrl}/dashboard`);
+  }
+
+  getEnergyTrend(days = 30): Observable<EnergyTrendResponse> {
+    return this.http.get<EnergyTrendResponse>(`${this.baseUrl}/energy?days=${days}`);
+  }
+
+  getReview(period: string): Observable<ReviewResponse> {
+    return this.http.get<ReviewResponse>(`${this.baseUrl}/review/${period}`);
+  }
+
+  getGoalItems(): Observable<GoalItemResponse[]> {
+    return this.http.get<GoalItemResponse[]>(`${this.baseUrl}/goalitems`);
+  }
+
+  createGoalItem(title: string, description?: string, parentGoalId?: string): Observable<GoalItemResponse> {
+    return this.http.post<GoalItemResponse>(`${this.baseUrl}/goalitems`, { title, description, parentGoalId });
+  }
+
+  updateGoalItem(id: string, title?: string, status?: string): Observable<GoalItemResponse> {
+    return this.http.put<GoalItemResponse>(`${this.baseUrl}/goalitems/${id}`, { title, status });
+  }
+
+  deleteGoalItem(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/goalitems/${id}`);
+  }
+
+  getPatterns(days = 30): Observable<string[]> {
+    return this.http.get<string[]>(`${this.baseUrl}/patterns?days=${days}`);
   }
 }

@@ -171,7 +171,10 @@
       "System.Threading.Tasks.Extensions/4.5.4": {},
       "DiarioIntelligente.Core/1.0.0": {
         "runtime": {
-          "DiarioIntelligente.Core.dll": {}
+          "DiarioIntelligente.Core.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
         }
       }
     }

@@ -1,0 +1,79 @@
+<div class="energy-page">
+  <h2>Energia & Stress</h2>
+  <p class="subtitle">Tracciamento automatico dei livelli di energia e stress, estratti dalle tue entry.</p>
+
+  <div class="period-selector">
+    <button [class.active]="days() === 7" (click)="setDays(7)">7 giorni</button>
+    <button [class.active]="days() === 14" (click)="setDays(14)">14 giorni</button>
+    <button [class.active]="days() === 30" (click)="setDays(30)">30 giorni</button>
+    <button [class.active]="days() === 90" (click)="setDays(90)">90 giorni</button>
+  </div>
+
+  @if (loading()) {
+    <p class="loading">Caricamento...</p>
+  } @else if (data(); as d) {
+    <div class="stats-row">
+      <div class="stat">
+        <span class="stat-value" [style.color]="getEnergyColor(d.avgEnergy)">{{ d.avgEnergy }}</span>
+        <span class="stat-label">Energia media</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" [style.color]="getStressColor(d.avgStress)">{{ d.avgStress }}</span>
+        <span class="stat-label">Stress medio</span>
+      </div>
+    </div>
+
+    @if (d.topEmotions.length > 0) {
+      <div class="section">
+        <h3>Emozioni prevalenti</h3>
+        <div class="emotion-tags">
+          @for (e of d.topEmotions; track e) {
+            <span class="emotion-tag">{{ e }}</span>
+          }
+        </div>
+      </div>
+    }
+
+    @if (d.dataPoints.length > 0) {
+      <div class="section">
+        <h3>Andamento</h3>
+        <div class="chart">
+          @for (point of d.dataPoints; track point.date) {
+            <div class="chart-col">
+              <div class="bars">
+                <div class="bar energy" [style.height.%]="point.energy * 10" [style.background]="getEnergyColor(point.energy)"
+                     [title]="'Energia: ' + point.energy"></div>
+                <div class="bar stress" [style.height.%]="point.stress * 10" [style.background]="getStressColor(point.stress)"
+                     [title]="'Stress: ' + point.stress"></div>
+              </div>
+              <span class="chart-date">{{ point.date | date:'dd/MM' }}</span>
+              @if (point.emotion) {
+                <span class="chart-emotion">{{ point.emotion }}</span>
+              }
+            </div>
+          }
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="dot" style="background:#22c55e"></span> Energia</span>
+          <span class="legend-item"><span class="dot" style="background:#ef4444"></span> Stress</span>
+        </div>
+      </div>
+    } @else {
+      <p class="empty">Nessun dato disponibile. I dati vengono generati automaticamente quando scrivi entry.</p>
+    }
+
+    @if (d.correlations.length > 0) {
+      <div class="section">
+        <h3>Correlazioni rilevate</h3>
+        @for (c of d.correlations; track c.factor) {
+          <div class="correlation-item">
+            <span class="corr-factor">{{ c.factor }}</span>
+            <span class="corr-arrow">&#8594;</span>
+            <span class="corr-effect">{{ c.effect }}</span>
+            <span class="corr-confidence">{{ (c.confidence * 100).toFixed(0) }}%</span>
+          </div>
+        }
+      </div>
+    }
+  }
+</div>

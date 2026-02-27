@@ -1,0 +1,61 @@
+<div class="chat-page">
+  <h2>Chat con il tuo diario</h2>
+  <p class="subtitle">Fai domande sulle tue entry. Il sistema trova i passaggi rilevanti e risponde basandosi sui tuoi dati.</p>
+
+  <div class="chat-container">
+    <div class="messages" #messagesContainer>
+      @if (messages().length === 0) {
+        <div class="empty-state">
+          <p>Nessun messaggio ancora. Prova a chiedere:</p>
+          <ul>
+            <li>"Cosa ho fatto la settimana scorsa?"</li>
+            <li>"Quando ho parlato di [progetto X]?"</li>
+            <li>"Quali sono le cose che mi stressano di piu?"</li>
+            <li>"Riassumimi gli ultimi giorni"</li>
+          </ul>
+        </div>
+      }
+      @for (msg of messages(); track msg.createdAt) {
+        <div class="message" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
+          <div class="message-header">
+            <span class="role">{{ msg.role === 'user' ? 'Tu' : 'Assistente' }}</span>
+            <span class="time">{{ msg.createdAt | date:'HH:mm' }}</span>
+          </div>
+          <div class="message-content">{{ msg.content }}</div>
+        </div>
+      }
+      @if (sending()) {
+        <div class="message assistant">
+          <div class="message-header">
+            <span class="role">Assistente</span>
+          </div>
+          <div class="message-content typing">Sto cercando nelle tue entry...</div>
+        </div>
+      }
+    </div>
+
+    @if (sources().length > 0) {
+      <div class="sources">
+        <h4>Fonti utilizzate</h4>
+        @for (s of sources(); track s.entryId) {
+          <div class="source-item">
+            <span class="source-date">{{ s.date | date:'dd/MM/yyyy' }}</span>
+            <span class="source-similarity">{{ (s.similarity * 100).toFixed(0) }}%</span>
+            <p>{{ s.preview }}</p>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="input-area">
+      <textarea
+        [ngModel]="input()"
+        (ngModelChange)="input.set($event)"
+        (keydown)="onKeydown($event)"
+        placeholder="Scrivi una domanda..."
+        rows="2"
+      ></textarea>
+      <button (click)="send()" [disabled]="sending() || !input().trim()">Invia</button>
+    </div>
+  </div>
+</div>

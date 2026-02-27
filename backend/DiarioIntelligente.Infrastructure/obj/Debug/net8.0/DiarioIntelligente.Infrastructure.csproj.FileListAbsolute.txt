@@ -15,3 +15,21 @@
 /Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Infrastructure/obj/Debug/net8.0/DiarioIntelligente.Infrastructure.pdb
 /Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Infrastructure/obj/Debug/net8.0/DiarioIntelligente.Infrastructure.genruntimeconfig.cache
 /Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Infrastructure/obj/Debug/net8.0/ref/DiarioIntelligente.Infrastructure.dll
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\bin\Debug\net8.0\DiarioIntelligente.Infrastructure.deps.json
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\bin\Debug\net8.0\DiarioIntelligente.Infrastructure.runtimeconfig.json
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\bin\Debug\net8.0\DiarioIntelligente.Infrastructure.dll
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\bin\Debug\net8.0\DiarioIntelligente.Infrastructure.pdb
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\bin\Debug\net8.0\DiarioIntelligente.Core.dll
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\bin\Debug\net8.0\DiarioIntelligente.Core.pdb
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.csproj.AssemblyReference.cache
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.AssemblyInfoInputs.cache
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.AssemblyInfo.cs
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.csproj.CoreCompileInputs.cache
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.sourcelink.json
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIn.2AA875F4.Up2Date
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.dll
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\refint\DiarioIntelligente.Infrastructure.dll
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.pdb
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\DiarioIntelligente.Infrastructure.genruntimeconfig.cache
+E:\development\personal\claude-life-story\backend\DiarioIntelligente.Infrastructure\obj\Debug\net8.0\ref\DiarioIntelligente.Infrastructure.dll

@@ -54,6 +54,7 @@ public class EntryProcessingService : BackgroundService
         var conceptRepo = scope.ServiceProvider.GetRequiredService<IConceptRepository>();
         var connectionRepo = scope.ServiceProvider.GetRequiredService<IConnectionRepository>();
         var insightRepo = scope.ServiceProvider.GetRequiredService<IInsightRepository>();
+        var energyRepo = scope.ServiceProvider.GetRequiredService<IEnergyLogRepository>();
 
         // Step 1: Generate embedding
         _logger.LogInformation("Generating embedding for entry {EntryId}", job.EntryId);
@@ -72,7 +73,22 @@ public class EntryProcessingService : BackgroundService
         _logger.LogInformation("Analyzing entry {EntryId} with AI", job.EntryId);
         var analysis = await aiService.AnalyzeEntryAsync(job.Content);
 
-        // Step 3: Save concepts and map them to entry
+        // Step 3: Save energy/stress log
+        var dominantEmotion = analysis.Emotions.FirstOrDefault();
+        await energyRepo.CreateAsync(new EnergyLog
+        {
+            Id = Guid.NewGuid(),
+            EntryId = job.EntryId,
+            UserId = job.UserId,
+            EnergyLevel = analysis.EnergyLevel,
+            StressLevel = analysis.StressLevel,
+            DominantEmotion = dominantEmotion,
+            RecordedAt = DateTime.UtcNow
+        });
+        _logger.LogInformation("Energy log saved: E={Energy} S={Stress} for entry {EntryId}",
+            analysis.EnergyLevel, analysis.StressLevel, job.EntryId);
+
+        // Step 4: Save concepts and map them to entry
         var entryConcepts = new List<Concept>();
         foreach (var extracted in analysis.Concepts)
         {
@@ -128,7 +144,7 @@ public class EntryProcessingService : BackgroundService
             }
         }
 
-        // Step 4: Find semantic connections via embedding similarity
+        // Step 5: Find semantic connections via embedding similarity
         _logger.LogInformation("Finding semantic connections for entry {EntryId}", job.EntryId);
         var previousEntries = await entryRepo.GetEntriesWithEmbeddingsAsync(job.UserId);
 
@@ -150,7 +166,7 @@ public class EntryProcessingService : BackgroundService
             }
         }
 
-        // Step 5: Build connections between concepts that co-occur in this entry
+        // Step 6: Build connections between concepts that co-occur in this entry
         for (int i = 0; i < entryConcepts.Count; i++)
         {
             for (int j = i + 1; j < entryConcepts.Count; j++)
@@ -177,7 +193,7 @@ public class EntryProcessingService : BackgroundService
             }
         }
 
-        // Step 6: Check for goal completions → generate insights
+        // Step 7: Check for goal completions → generate insights
         foreach (var completion in analysis.GoalCompletions)
         {
             var matchingDesire = await conceptRepo.FindByLabelAndTypeAsync(

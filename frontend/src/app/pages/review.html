@@ -1,0 +1,89 @@
+<div class="review-page">
+  <h2>Review periodiche</h2>
+  <p class="subtitle">Genera review automatiche basate sulle tue entry del diario.</p>
+
+  <div class="controls">
+    <div class="period-selector">
+      <button [class.active]="selectedPeriod() === 'daily'" (click)="setPeriod('daily')">Giornaliera</button>
+      <button [class.active]="selectedPeriod() === 'weekly'" (click)="setPeriod('weekly')">Settimanale</button>
+      <button [class.active]="selectedPeriod() === 'monthly'" (click)="setPeriod('monthly')">Mensile</button>
+    </div>
+    <button class="generate-btn" (click)="generate()" [disabled]="loading()">
+      {{ loading() ? 'Generazione...' : 'Genera review' }}
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-card">
+      <p>Analizzando le tue entry...</p>
+    </div>
+  }
+
+  @if (review(); as r) {
+    <div class="review-content">
+      <div class="review-summary">
+        <h3>Riepilogo</h3>
+        <p>{{ r.summary }}</p>
+      </div>
+
+      @if (r.keyThemes.length > 0) {
+        <div class="review-section">
+          <h3>Temi principali</h3>
+          <div class="tags">
+            @for (t of r.keyThemes; track t) {
+              <span class="tag theme">{{ t }}</span>
+            }
+          </div>
+        </div>
+      }
+
+      @if (r.accomplishments.length > 0) {
+        <div class="review-section">
+          <h3>Risultati e progressi</h3>
+          <ul>
+            @for (a of r.accomplishments; track a) {
+              <li class="positive">{{ a }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (r.challenges.length > 0) {
+        <div class="review-section">
+          <h3>Sfide e blocchi</h3>
+          <ul>
+            @for (c of r.challenges; track c) {
+              <li class="challenge">{{ c }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (r.patterns.length > 0) {
+        <div class="review-section">
+          <h3>Pattern rilevati</h3>
+          <ul>
+            @for (p of r.patterns; track p) {
+              <li class="pattern">{{ p }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      @if (r.suggestions.length > 0) {
+        <div class="review-section">
+          <h3>Suggerimenti</h3>
+          <ul>
+            @for (s of r.suggestions; track s) {
+              <li class="suggestion">{{ s }}</li>
+            }
+          </ul>
+        </div>
+      }
+
+      <div class="review-footer">
+        Generata il {{ r.generatedAt | date:'dd/MM/yyyy HH:mm' }}
+      </div>
+    </div>
+  }
+</div>

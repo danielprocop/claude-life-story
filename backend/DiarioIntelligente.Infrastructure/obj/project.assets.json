@@ -4338,32 +4338,42 @@
     ]
   },
   "packageFolders": {
-    "/Users/adrianprocop/.nuget/packages/": {}
+    "C:\\Users\\danie\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {},
+    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Infrastructure/DiarioIntelligente.Infrastructure.csproj",
+      "projectUniqueName": "E:\\development\\personal\\claude-life-story\\backend\\DiarioIntelligente.Infrastructure\\DiarioIntelligente.Infrastructure.csproj",
       "projectName": "DiarioIntelligente.Infrastructure",
-      "projectPath": "/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Infrastructure/DiarioIntelligente.Infrastructure.csproj",
-      "packagesPath": "/Users/adrianprocop/.nuget/packages/",
-      "outputPath": "/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Infrastructure/obj/",
+      "projectPath": "E:\\development\\personal\\claude-life-story\\backend\\DiarioIntelligente.Infrastructure\\DiarioIntelligente.Infrastructure.csproj",
+      "packagesPath": "C:\\Users\\danie\\.nuget\\packages\\",
+      "outputPath": "E:\\development\\personal\\claude-life-story\\backend\\DiarioIntelligente.Infrastructure\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+        "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+      ],
       "configFilePaths": [
-        "/Users/adrianprocop/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\danie\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/DiarioIntelligente.Core.csproj": {
-              "projectPath": "/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/DiarioIntelligente.Core.csproj"
+            "E:\\development\\personal\\claude-life-story\\backend\\DiarioIntelligente.Core\\DiarioIntelligente.Core.csproj": {
+              "projectPath": "E:\\development\\personal\\claude-life-story\\backend\\DiarioIntelligente.Core\\DiarioIntelligente.Core.csproj"
             }
           }
         }
@@ -4372,7 +4382,13 @@
         "warnAsError": [
           "NU1605"
         ]
-      }
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "9.0.300"
     },
     "frameworks": {
       "net8.0": {
@@ -4413,7 +4429,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/opt/homebrew/Cellar/dotnet@8/8.0.124/libexec/sdk/8.0.124/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.310/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
