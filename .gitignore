@@ -1,0 +1,16 @@
+# Local app settings (contains secrets)
+backend/DiarioIntelligente.API/appsettings.Development.json
+
+# macOS
+.DS_Store
+
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# local runtime logs
+.runlogs/
+
+# sqlite transient files
+*.db-wal
+*.db-shm
