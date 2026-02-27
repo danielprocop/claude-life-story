@@ -1,0 +1,28 @@
+<div class="insights-page">
+  <h2 class="page-title">Insight</h2>
+  <p class="page-subtitle">Riflessioni generate dall'AI sui tuoi pattern e progressi</p>
+
+  @if (loading()) {
+    <div class="loading">Caricamento...</div>
+  } @else if (insights().length === 0) {
+    <div class="empty">Nessun insight generato ancora. Continua a scrivere!</div>
+  } @else {
+    <div class="insights-list">
+      @for (insight of insights(); track insight.id) {
+        <div class="insight-card" [attr.data-type]="insight.type">
+          <div class="insight-header">
+            <span class="insight-type">
+              @if (insight.type === 'goal_completed') { Obiettivo raggiunto }
+              @else if (insight.type === 'weekly') { Riepilogo settimanale }
+              @else if (insight.type === 'pattern') { Pattern rilevato }
+              @else if (insight.type === 'anniversary') { Anniversario }
+              @else { {{ insight.type }} }
+            </span>
+            <span class="insight-date">{{ insight.generatedAt | date:'dd MMM yyyy' }}</span>
+          </div>
+          <p class="insight-content">{{ insight.content }}</p>
+        </div>
+      }
+    </div>
+  }
+</div>

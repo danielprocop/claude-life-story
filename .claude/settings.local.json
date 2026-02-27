@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet add DiarioIntelligente.AI/DiarioIntelligente.AI.csproj package Microsoft.Extensions.Configuration.Abstractions --version \"8.0.0\")",
+      "Bash(dotnet add DiarioIntelligente.AI/DiarioIntelligente.AI.csproj package Microsoft.Extensions.DependencyInjection.Abstractions --version \"8.0.2\")",
+      "Bash(dotnet build)",
+      "Bash(dotnet add DiarioIntelligente.AI/DiarioIntelligente.AI.csproj package Microsoft.Extensions.Options.ConfigurationExtensions --version \"8.0.0\")",
+      "Bash(npx @angular/cli@latest new frontend --routing --style=scss --ssr=false --skip-tests --skip-git)",
+      "Bash(npx ng generate component components/layout --flat --skip-tests)",
+      "Bash(npx ng generate component pages/write --flat --skip-tests)",
+      "Bash(npx ng generate component pages/timeline --flat --skip-tests)",
+      "Bash(npx ng generate component pages/graph --flat --skip-tests)",
+      "Bash(npx ng generate component pages/goals --flat --skip-tests)",
+      "Bash(npx ng generate component pages/insights --flat --skip-tests)",
+      "Bash(npx ng generate component pages/themes --flat --skip-tests)",
+      "Bash(npx ng generate service services/api --flat --skip-tests)"
+    ]
+  }
+}

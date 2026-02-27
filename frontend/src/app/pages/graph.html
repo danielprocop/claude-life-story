@@ -1,0 +1,51 @@
+<div class="graph-page">
+  <div class="graph-header">
+    <div>
+      <h2 class="page-title">Grafo dei Concetti</h2>
+      <p class="page-subtitle">Mappa interattiva delle connessioni tra i concetti del tuo diario</p>
+    </div>
+    @if (graph() && graph()!.nodes.length > 0) {
+      <div class="graph-stats">
+        <div class="stat">
+          <span class="stat-value">{{ graph()!.nodes.length }}</span>
+          <span class="stat-label">Nodi</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">{{ graph()!.edges.length }}</span>
+          <span class="stat-label">Connessioni</span>
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="loading">Caricamento...</div>
+  } @else if (!graph() || graph()!.nodes.length === 0) {
+    <div class="empty">Nessun concetto estratto ancora. Scrivi qualcosa e l'AI fara il resto!</div>
+  } @else {
+    <div class="graph-container">
+      <div #cyContainer class="cy-canvas"></div>
+
+      @if (selectedNode()) {
+        <div class="node-detail">
+          <button class="detail-close" (click)="closeDetail()">&times;</button>
+          <div class="detail-type" [style.color]="getTypeColor(selectedNode()!.type)">
+            {{ getTypeLabel(selectedNode()!.type) }}
+          </div>
+          <h3 class="detail-label">{{ selectedNode()!.label }}</h3>
+          <div class="detail-meta">Presente in {{ selectedNode()!.weight }} entry</div>
+        </div>
+      }
+    </div>
+
+    <div class="legend">
+      <span class="legend-title">Legenda:</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#e74c3c"></span>Persona</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#3498db"></span>Luogo</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#f39c12"></span>Desiderio</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#2ecc71"></span>Obiettivo</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#9b59b6"></span>Attivita</span>
+      <span class="legend-item"><span class="legend-dot" style="background:#e91e63"></span>Emozione</span>
+    </div>
+  }
+</div>

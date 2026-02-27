@@ -1,0 +1,11 @@
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/bin/Debug/net8.0/DiarioIntelligente.Core.deps.json
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/bin/Debug/net8.0/DiarioIntelligente.Core.dll
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/bin/Debug/net8.0/DiarioIntelligente.Core.pdb
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/DiarioIntelligente.Core.GeneratedMSBuildEditorConfig.editorconfig
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/DiarioIntelligente.Core.AssemblyInfoInputs.cache
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/DiarioIntelligente.Core.AssemblyInfo.cs
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/DiarioIntelligente.Core.csproj.CoreCompileInputs.cache
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/DiarioIntelligente.Core.dll
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/refint/DiarioIntelligente.Core.dll
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/DiarioIntelligente.Core.pdb
+/Users/adrianprocop/Desktop/claude life story/backend/DiarioIntelligente.Core/obj/Debug/net8.0/ref/DiarioIntelligente.Core.dll

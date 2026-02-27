@@ -1,0 +1,29 @@
+<div class="write-page">
+  <h2 class="page-title">Scrivi</h2>
+  <p class="page-subtitle">Scrivi liberamente. L'AI capisce da sola cosa c'e scritto.</p>
+
+  <div class="editor-container">
+    <textarea
+      class="editor"
+      placeholder="Cosa hai in mente oggi?"
+      [ngModel]="content()"
+      (ngModelChange)="content.set($event)"
+      (keydown.meta.enter)="save()"
+      rows="12"
+    ></textarea>
+  </div>
+
+  <div class="actions">
+    <button class="btn-save" (click)="save()" [disabled]="saving() || !content().trim()">
+      @if (saving()) {
+        Salvataggio...
+      } @else {
+        Salva
+      }
+    </button>
+
+    @if (saved()) {
+      <span class="saved-msg">Salvato! L'AI sta analizzando in background.</span>
+    }
+  </div>
+</div>

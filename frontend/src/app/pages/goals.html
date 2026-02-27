@@ -1,0 +1,36 @@
+<div class="goals-page">
+  <h2 class="page-title">Obiettivi</h2>
+  <p class="page-subtitle">Desideri e obiettivi identificati dall'AI dalle tue entry</p>
+
+  @if (loading()) {
+    <div class="loading">Caricamento...</div>
+  } @else if (goals().length === 0) {
+    <div class="empty">Nessun obiettivo identificato ancora. Scrivi dei tuoi desideri e sogni!</div>
+  } @else {
+    <div class="goals-list">
+      @for (goal of goals(); track goal.id) {
+        <div class="goal-card" [class.achieved]="goal.status === 'achieved'">
+          <div class="goal-header">
+            <span class="goal-status" [attr.data-status]="goal.status">
+              @if (goal.status === 'achieved') { Raggiunto }
+              @else if (goal.status === 'abandoned') { Abbandonato }
+              @else { In corso }
+            </span>
+            <span class="goal-date">Dal {{ goal.firstSeenAt | date:'dd MMM yyyy' }}</span>
+          </div>
+          <h3 class="goal-label">{{ goal.label }}</h3>
+          @if (goal.timeline.length > 0) {
+            <div class="goal-timeline">
+              @for (entry of goal.timeline; track entry.date) {
+                <div class="timeline-item">
+                  <span class="timeline-date">{{ entry.date | date:'dd/MM/yy' }}</span>
+                  <span class="timeline-text">{{ entry.entryPreview }}</span>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

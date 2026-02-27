@@ -1,0 +1,24 @@
+<div class="themes-page">
+  <h2 class="page-title">Temi</h2>
+  <p class="page-subtitle">Card tematiche per ogni tema ricorrente nel tuo diario</p>
+
+  @if (loading()) {
+    <div class="loading">Caricamento...</div>
+  } @else if (themes().length === 0) {
+    <div class="empty">Nessun tema estratto ancora. L'AI ha bisogno di piu entry!</div>
+  } @else {
+    <div class="themes-grid">
+      @for (theme of themes(); track theme.type) {
+        <div class="theme-card" [attr.data-type]="theme.type">
+          <h3 class="theme-title">{{ theme.label }}</h3>
+          <span class="theme-count">{{ theme.concepts.length }} concetti</span>
+          <div class="concept-list">
+            @for (concept of theme.concepts; track concept.id) {
+              <span class="concept-tag">{{ concept.label }}</span>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

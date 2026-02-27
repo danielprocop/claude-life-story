@@ -1,0 +1,28 @@
+<div class="timeline-page">
+  <h2 class="page-title">Timeline</h2>
+  <p class="page-subtitle">Le tue entry in ordine cronologico</p>
+
+  @if (loading()) {
+    <div class="loading">Caricamento...</div>
+  } @else if (entries().length === 0) {
+    <div class="empty">Nessuna entry ancora. Vai a scrivere qualcosa!</div>
+  } @else {
+    <div class="timeline">
+      @for (entry of entries(); track entry.id) {
+        <div class="timeline-entry">
+          <div class="entry-date">{{ entry.createdAt | date:'dd MMM yyyy, HH:mm' }}</div>
+          <div class="entry-content">{{ entry.contentPreview }}</div>
+          @if (entry.conceptCount > 0) {
+            <div class="entry-meta">{{ entry.conceptCount }} concetti estratti</div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="pagination">
+      <button (click)="prevPage()" [disabled]="page() <= 1">Precedente</button>
+      <span>Pagina {{ page() }}</span>
+      <button (click)="nextPage()" [disabled]="entries().length < 20">Successiva</button>
+    </div>
+  }
+</div>

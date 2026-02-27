@@ -1,0 +1,45 @@
+.insights-page { max-width: 720px; margin: 0 auto; }
+.page-title { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+.page-subtitle { color: #666; margin-bottom: 32px; font-size: 15px; }
+.loading, .empty { text-align: center; padding: 48px 0; color: #888; }
+
+.insights-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.insight-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e8e8e8;
+
+  &[data-type="goal_completed"] { border-left: 4px solid #2ecc71; }
+  &[data-type="weekly"] { border-left: 4px solid #3498db; }
+  &[data-type="pattern"] { border-left: 4px solid #f39c12; }
+  &[data-type="anniversary"] { border-left: 4px solid #9b59b6; }
+}
+
+.insight-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.insight-type {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6c63ff;
+  letter-spacing: 0.3px;
+}
+
+.insight-date { font-size: 13px; color: #999; }
+
+.insight-content {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #333;
+}

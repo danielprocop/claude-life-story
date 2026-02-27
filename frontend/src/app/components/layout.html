@@ -1,0 +1,48 @@
+<div class="app-container">
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="logo">Diario Intelligente</h1>
+    </div>
+    <ul class="nav-links">
+      <li>
+        <a routerLink="/write" routerLinkActive="active">
+          <span class="nav-icon">&#9998;</span>
+          <span>Scrivi</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/timeline" routerLinkActive="active">
+          <span class="nav-icon">&#128197;</span>
+          <span>Timeline</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/graph" routerLinkActive="active">
+          <span class="nav-icon">&#128304;</span>
+          <span>Grafo</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/goals" routerLinkActive="active">
+          <span class="nav-icon">&#127919;</span>
+          <span>Obiettivi</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/insights" routerLinkActive="active">
+          <span class="nav-icon">&#128161;</span>
+          <span>Insight</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/themes" routerLinkActive="active">
+          <span class="nav-icon">&#128278;</span>
+          <span>Temi</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>
