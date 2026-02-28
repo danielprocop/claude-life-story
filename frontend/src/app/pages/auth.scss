@@ -1,0 +1,138 @@
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(198, 93, 39, 0.16), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(16, 84, 129, 0.18), transparent 30%),
+    linear-gradient(135deg, #f4efe7 0%, #f8fbfd 100%);
+}
+
+.auth-panel {
+  width: min(1080px, 100%);
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 28px;
+  align-items: stretch;
+}
+
+.auth-copy,
+.auth-card {
+  border-radius: 28px;
+  padding: 40px;
+  box-shadow: 0 28px 60px rgba(19, 36, 54, 0.12);
+}
+
+.auth-copy {
+  background: linear-gradient(160deg, #102131 0%, #214460 100%);
+  color: #f5f1e8;
+
+  h1 {
+    font-size: clamp(40px, 5vw, 64px);
+    line-height: 0.96;
+    letter-spacing: -0.05em;
+    margin-bottom: 20px;
+  }
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  color: rgba(245, 241, 232, 0.72);
+  margin-bottom: 18px;
+}
+
+.lede {
+  max-width: 34rem;
+  color: rgba(245, 241, 232, 0.82);
+  font-size: 18px;
+}
+
+.auth-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+
+  button {
+    flex: 1;
+    border-radius: 999px;
+    padding: 10px 14px;
+    background: #e8eef2;
+    color: #496173;
+    font-weight: 600;
+  }
+
+  .active {
+    background: #102131;
+    color: #f5f1e8;
+  }
+}
+
+form {
+  display: grid;
+  gap: 16px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334a5f;
+  }
+}
+
+input {
+  width: 100%;
+  border: 1px solid #d8e2ea;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  color: #102131;
+}
+
+.notice,
+.error {
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+.notice {
+  background: #edf6ff;
+  color: #0f4f7a;
+}
+
+.error {
+  background: #fff1f0;
+  color: #9b2c2c;
+}
+
+.submit {
+  margin-top: 8px;
+  border-radius: 16px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #c65d27 0%, #a7431b 100%);
+  color: #fff8f2;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .auth-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-copy,
+  .auth-card {
+    padding: 28px;
+  }
+}

@@ -65,6 +65,10 @@
         </a>
       </li>
     </ul>
+    <div class="sidebar-footer">
+      <p class="user-label" *ngIf="auth.user() as user">{{ user.email }}</p>
+      <button class="sign-out" type="button" (click)="signOut()">Esci</button>
+    </div>
   </nav>
   <main class="content">
     <router-outlet />

@@ -1,0 +1,41 @@
+# Deploy Status
+
+Date: 2026-02-28
+
+## Current State
+
+- Frontend is deployed on Amplify app `d35nn0pbd8bxxa`
+- Backend is deployed on App Runner service `diario-intelligente-api`
+- GitHub Actions workflow exists in `.github/workflows/deploy.yml`
+- The workflow is configured to use AWS OIDC role assumption
+- App Runner runtime secrets now come from SSM Parameter Store
+- Manual frontend deploy completed successfully on 2026-02-28
+- Backend health endpoint is responding successfully after the latest deploy cycle
+
+## What Happens On Push
+
+Automatic deployment on `push` to `main` works only after the workflow file is committed and pushed to GitHub.
+
+At the moment of this note:
+
+- the workflow exists locally
+- AWS roles and trust configuration are already prepared
+- once these changes are pushed, GitHub Actions can deploy without static AWS keys
+
+## Backend Deploy Path
+
+- build Docker image
+- push image to ECR `diario-intelligente`
+- trigger App Runner deployment
+
+## Frontend Deploy Path
+
+- build Angular production bundle
+- upload artifact to Amplify
+- start Amplify deployment for `main`
+
+## Security Notes
+
+- static AWS access keys are no longer required by the workflow design
+- secrets should remain in SSM or Secrets Manager, not in App Runner plain env vars
+- the OpenAI key should still be rotated because it previously existed in clear text runtime configuration

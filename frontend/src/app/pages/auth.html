@@ -1,0 +1,54 @@
+<section class="auth-shell">
+  <div class="auth-panel">
+    <div class="auth-copy">
+      <p class="eyebrow">Diario Intelligente</p>
+      <h1>Memoria personale, grafo vivo, direzione quotidiana.</h1>
+      <p class="lede">
+        Entra con il tuo account Cognito per isolare dati, cronologia, insight e obiettivi per singolo utente.
+      </p>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button type="button" [class.active]="mode() === 'signin'" (click)="setMode('signin')">Accedi</button>
+        <button type="button" [class.active]="mode() === 'signup'" (click)="setMode('signup')">Registrati</button>
+        <button type="button" [class.active]="mode() === 'confirm'" (click)="setMode('confirm')">Conferma</button>
+      </div>
+
+      <form (ngSubmit)="submit()">
+        <label>
+          <span>Email</span>
+          <input [(ngModel)]="email" name="email" type="email" autocomplete="email" required />
+        </label>
+
+        <label *ngIf="mode() !== 'confirm'">
+          <span>Password</span>
+          <input [(ngModel)]="password" name="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <label *ngIf="mode() === 'signup'">
+          <span>Conferma password</span>
+          <input
+            [(ngModel)]="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            required
+          />
+        </label>
+
+        <label *ngIf="mode() === 'confirm'">
+          <span>Codice email</span>
+          <input [(ngModel)]="confirmationCode" name="confirmationCode" type="text" autocomplete="one-time-code" required />
+        </label>
+
+        <p class="notice" *ngIf="notice()">{{ notice() }}</p>
+        <p class="error" *ngIf="error()">{{ error() }}</p>
+
+        <button class="submit" type="submit" [disabled]="working()">
+          {{ working() ? 'Attendere...' : mode() === 'signin' ? 'Accedi' : mode() === 'signup' ? 'Crea account' : 'Conferma account' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</section>

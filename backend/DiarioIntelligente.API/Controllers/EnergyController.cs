@@ -6,10 +6,9 @@ namespace DiarioIntelligente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class EnergyController : ControllerBase
+public class EnergyController : AuthenticatedController
 {
     private readonly IEnergyLogRepository _energyRepo;
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public EnergyController(IEnergyLogRepository energyRepo)
     {
@@ -19,7 +18,7 @@ public class EnergyController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<EnergyTrendResponse>> GetTrend([FromQuery] int days = 30)
     {
-        var logs = await _energyRepo.GetByUserAsync(DemoUserId, days);
+        var logs = await _energyRepo.GetByUserAsync(GetUserId(), days);
 
         var dataPoints = logs
             .OrderBy(l => l.RecordedAt)

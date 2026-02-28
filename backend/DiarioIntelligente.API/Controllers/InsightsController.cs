@@ -6,18 +6,16 @@ namespace DiarioIntelligente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class InsightsController : ControllerBase
+public class InsightsController : AuthenticatedController
 {
     private readonly IInsightRepository _insightRepo;
-
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public InsightsController(IInsightRepository insightRepo) => _insightRepo = insightRepo;
 
     [HttpGet]
     public async Task<ActionResult<List<InsightResponse>>> GetAll()
     {
-        var insights = await _insightRepo.GetByUserAsync(DemoUserId);
+        var insights = await _insightRepo.GetByUserAsync(GetUserId());
 
         return Ok(insights.Select(i => new InsightResponse(
             i.Id,

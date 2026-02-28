@@ -8,10 +8,18 @@ namespace DiarioIntelligente.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        string connectionString,
+        string databaseProvider = "Sqlite")
     {
         services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlite(connectionString));
+        {
+            if (databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+                options.UseNpgsql(connectionString);
+            else
+                options.UseSqlite(connectionString);
+        });
 
         services.AddScoped<IEntryRepository, EntryRepository>();
         services.AddScoped<IConceptRepository, ConceptRepository>();

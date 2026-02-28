@@ -6,12 +6,10 @@ namespace DiarioIntelligente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ConnectionsController : ControllerBase
+public class ConnectionsController : AuthenticatedController
 {
     private readonly IConnectionRepository _connectionRepo;
     private readonly IConceptRepository _conceptRepo;
-
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public ConnectionsController(IConnectionRepository connectionRepo, IConceptRepository conceptRepo)
     {
@@ -22,8 +20,9 @@ public class ConnectionsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<GraphResponse>> GetGraph()
     {
-        var concepts = await _conceptRepo.GetByUserAsync(DemoUserId);
-        var connections = await _connectionRepo.GetByUserConceptsAsync(DemoUserId);
+        var userId = GetUserId();
+        var concepts = await _conceptRepo.GetByUserAsync(userId);
+        var connections = await _connectionRepo.GetByUserConceptsAsync(userId);
 
         var nodes = concepts.Select(c => new GraphNode(
             c.Id,

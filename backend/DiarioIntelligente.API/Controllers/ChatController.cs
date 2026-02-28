@@ -8,12 +8,11 @@ namespace DiarioIntelligente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ChatController : ControllerBase
+public class ChatController : AuthenticatedController
 {
     private readonly IAiService _aiService;
     private readonly IEntryRepository _entryRepo;
     private readonly IChatMessageRepository _chatRepo;
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public ChatController(IAiService aiService, IEntryRepository entryRepo, IChatMessageRepository chatRepo)
     {
@@ -28,9 +27,11 @@ public class ChatController : ControllerBase
         if (!_aiService.IsConfigured)
             return Ok(new ChatResponse("L'AI non è configurata. Aggiungi una chiave API OpenAI.", new List<ChatSourceEntry>()));
 
+        var userId = GetUserId();
+
         // Generate embedding for user message to find relevant entries
         var queryEmbedding = await _aiService.GetEmbeddingAsync(request.Message);
-        var allEntries = await _entryRepo.GetEntriesWithEmbeddingsAsync(DemoUserId);
+        var allEntries = await _entryRepo.GetEntriesWithEmbeddingsAsync(userId);
 
         // Find most relevant entries using cosine similarity
         var rankedEntries = allEntries
@@ -51,7 +52,7 @@ public class ChatController : ControllerBase
             $"[{x.Entry.CreatedAt:dd/MM/yyyy HH:mm}] (rilevanza: {x.Similarity:F2})\n{x.Entry.Content}"));
 
         // Get recent chat history
-        var recentChat = await _chatRepo.GetRecentAsync(DemoUserId, 10);
+        var recentChat = await _chatRepo.GetRecentAsync(userId, 10);
         var chatHistory = string.Join("\n", recentChat.Select(m =>
             $"{(m.Role == "user" ? "Utente" : "Assistente")}: {m.Content}"));
 
@@ -62,7 +63,7 @@ public class ChatController : ControllerBase
         await _chatRepo.CreateAsync(new ChatMessage
         {
             Id = Guid.NewGuid(),
-            UserId = DemoUserId,
+            UserId = userId,
             Role = "user",
             Content = request.Message,
             CreatedAt = DateTime.UtcNow
@@ -70,7 +71,7 @@ public class ChatController : ControllerBase
         await _chatRepo.CreateAsync(new ChatMessage
         {
             Id = Guid.NewGuid(),
-            UserId = DemoUserId,
+            UserId = userId,
             Role = "assistant",
             Content = answer,
             CreatedAt = DateTime.UtcNow
@@ -89,7 +90,7 @@ public class ChatController : ControllerBase
     [HttpGet("history")]
     public async Task<ActionResult<List<ChatHistoryItem>>> GetHistory()
     {
-        var messages = await _chatRepo.GetRecentAsync(DemoUserId, 50);
+        var messages = await _chatRepo.GetRecentAsync(GetUserId(), 50);
         return Ok(messages.Select(m => new ChatHistoryItem(m.Role, m.Content, m.CreatedAt)).ToList());
     }
 }

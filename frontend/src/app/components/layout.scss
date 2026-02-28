@@ -57,6 +57,27 @@
   }
 }
 
+.sidebar-footer {
+  padding: 18px 20px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.user-label {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #9db1c7;
+  word-break: break-word;
+}
+
+.sign-out {
+  width: 100%;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-weight: 600;
+}
+
 .content {
   flex: 1;
   overflow-y: auto;

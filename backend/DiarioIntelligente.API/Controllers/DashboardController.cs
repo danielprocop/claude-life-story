@@ -6,14 +6,13 @@ namespace DiarioIntelligente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class DashboardController : ControllerBase
+public class DashboardController : AuthenticatedController
 {
     private readonly IEntryRepository _entryRepo;
     private readonly IConceptRepository _conceptRepo;
     private readonly IGoalItemRepository _goalRepo;
     private readonly IInsightRepository _insightRepo;
     private readonly IEnergyLogRepository _energyRepo;
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public DashboardController(
         IEntryRepository entryRepo,
@@ -32,12 +31,13 @@ public class DashboardController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<DashboardResponse>> Get()
     {
-        var totalEntries = await _entryRepo.CountByUserAsync(DemoUserId);
-        var concepts = await _conceptRepo.GetByUserAsync(DemoUserId);
-        var goals = await _goalRepo.GetRootGoalsAsync(DemoUserId);
-        var insights = await _insightRepo.GetByUserAsync(DemoUserId);
-        var energyLogs = await _energyRepo.GetByUserAsync(DemoUserId, 14);
-        var (recentEntries, _) = await _entryRepo.GetByUserAsync(DemoUserId, 1, 5);
+        var userId = GetUserId();
+        var totalEntries = await _entryRepo.CountByUserAsync(userId);
+        var concepts = await _conceptRepo.GetByUserAsync(userId);
+        var goals = await _goalRepo.GetRootGoalsAsync(userId);
+        var insights = await _insightRepo.GetByUserAsync(userId);
+        var energyLogs = await _energyRepo.GetByUserAsync(userId, 14);
+        var (recentEntries, _) = await _entryRepo.GetByUserAsync(userId, 1, 5);
 
         var activeGoals = goals.Where(g => g.Status == "active").ToList();
 

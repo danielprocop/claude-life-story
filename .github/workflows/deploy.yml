@@ -1,0 +1,86 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_REPOSITORY: diario-intelligente
+  APP_RUNNER_ARN: arn:aws:apprunner:eu-west-1:388592345191:service/diario-intelligente-api/d2d1e2761672485db4a74787a791c05c
+  AMPLIFY_APP_ID: d35nn0pbd8bxxa
+  DEPLOY_ROLE_ARN: arn:aws:iam::388592345191:role/GitHubActionsDiarioDeployRole
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          role-session-name: github-actions-diario-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        working-directory: backend
+        run: |
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest .
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+
+      - name: Deploy to App Runner
+        run: |
+          aws apprunner start-deployment --service-arn ${{ env.APP_RUNNER_ARN }}
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build for production
+        working-directory: frontend
+        run: npx ng build --configuration production
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          role-session-name: github-actions-diario-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to Amplify
+        working-directory: frontend
+        run: |
+          cd dist/frontend/browser
+          zip -r ../../../deploy.zip .
+          cd ../../..
+          DEPLOY_RESULT=$(aws amplify create-deployment --app-id ${{ env.AMPLIFY_APP_ID }} --branch-name main --output json)
+          DEPLOY_URL=$(echo "$DEPLOY_RESULT" | jq -r '.zipUploadUrl')
+          JOB_ID=$(echo "$DEPLOY_RESULT" | jq -r '.jobId')
+          curl -T deploy.zip "$DEPLOY_URL"
+          aws amplify start-deployment --app-id ${{ env.AMPLIFY_APP_ID }} --branch-name main --job-id $JOB_ID

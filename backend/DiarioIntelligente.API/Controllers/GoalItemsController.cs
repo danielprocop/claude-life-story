@@ -7,10 +7,9 @@ namespace DiarioIntelligente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class GoalItemsController : ControllerBase
+public class GoalItemsController : AuthenticatedController
 {
     private readonly IGoalItemRepository _goalRepo;
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public GoalItemsController(IGoalItemRepository goalRepo)
     {
@@ -20,14 +19,14 @@ public class GoalItemsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<GoalItemResponse>>> GetAll()
     {
-        var goals = await _goalRepo.GetRootGoalsAsync(DemoUserId);
+        var goals = await _goalRepo.GetRootGoalsAsync(GetUserId());
         return Ok(goals.Select(MapGoalItem).ToList());
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<GoalItemResponse>> GetById(Guid id)
     {
-        var goal = await _goalRepo.GetByIdAsync(id, DemoUserId);
+        var goal = await _goalRepo.GetByIdAsync(id, GetUserId());
         if (goal == null) return NotFound();
         return Ok(MapGoalItem(goal));
     }
@@ -35,10 +34,11 @@ public class GoalItemsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<GoalItemResponse>> Create([FromBody] CreateGoalRequest request)
     {
+        var userId = GetUserId();
         var goal = new GoalItem
         {
             Id = Guid.NewGuid(),
-            UserId = DemoUserId,
+            UserId = userId,
             Title = request.Title,
             Description = request.Description,
             ParentGoalId = request.ParentGoalId,
@@ -53,7 +53,7 @@ public class GoalItemsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<GoalItemResponse>> Update(Guid id, [FromBody] UpdateGoalRequest request)
     {
-        var goal = await _goalRepo.GetByIdAsync(id, DemoUserId);
+        var goal = await _goalRepo.GetByIdAsync(id, GetUserId());
         if (goal == null) return NotFound();
 
         if (request.Title != null) goal.Title = request.Title;
@@ -71,7 +71,7 @@ public class GoalItemsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<ActionResult> Delete(Guid id)
     {
-        var goal = await _goalRepo.GetByIdAsync(id, DemoUserId);
+        var goal = await _goalRepo.GetByIdAsync(id, GetUserId());
         if (goal == null) return NotFound();
 
         await _goalRepo.DeleteAsync(id);

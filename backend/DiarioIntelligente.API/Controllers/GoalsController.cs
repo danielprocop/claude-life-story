@@ -6,18 +6,16 @@ namespace DiarioIntelligente.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class GoalsController : ControllerBase
+public class GoalsController : AuthenticatedController
 {
     private readonly IConceptRepository _conceptRepo;
-
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public GoalsController(IConceptRepository conceptRepo) => _conceptRepo = conceptRepo;
 
     [HttpGet]
     public async Task<ActionResult<List<GoalResponse>>> GetAll()
     {
-        var goals = await _conceptRepo.GetGoalsAndDesiresAsync(DemoUserId);
+        var goals = await _conceptRepo.GetGoalsAndDesiresAsync(GetUserId());
 
         return Ok(goals.Select(g =>
         {

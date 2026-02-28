@@ -6,15 +6,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DiarioIntelligente.API.Controllers;
 
-[ApiController]
 [Route("api/[controller]")]
-public class EntriesController : ControllerBase
+public class EntriesController : AuthenticatedController
 {
     private readonly IEntryRepository _entryRepo;
     private readonly EntryProcessingQueue _queue;
-
-    // TODO: Replace with actual user auth. For now, use a hardcoded demo user.
-    private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
 
     public EntriesController(IEntryRepository entryRepo, EntryProcessingQueue queue)
     {
@@ -28,7 +24,7 @@ public class EntriesController : ControllerBase
         var entry = new Entry
         {
             Id = Guid.NewGuid(),
-            UserId = DemoUserId,
+            UserId = GetUserId(),
             Content = request.Content,
             CreatedAt = DateTime.UtcNow
         };
@@ -52,7 +48,7 @@ public class EntriesController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var (items, totalCount) = await _entryRepo.GetByUserAsync(DemoUserId, page, pageSize);
+        var (items, totalCount) = await _entryRepo.GetByUserAsync(GetUserId(), page, pageSize);
 
         var response = new PaginatedResponse<EntryListResponse>(
             items.Select(e => new EntryListResponse(
@@ -72,7 +68,7 @@ public class EntriesController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<EntryResponse>> GetById(Guid id)
     {
-        var entry = await _entryRepo.GetByIdAsync(id, DemoUserId);
+        var entry = await _entryRepo.GetByIdAsync(id, GetUserId());
         if (entry == null) return NotFound();
 
         return Ok(new EntryResponse(
