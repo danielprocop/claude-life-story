@@ -29,6 +29,23 @@
           </div>
         </section>
       }
+
+      @if (relatedEntries().length > 0) {
+        <section class="related-section">
+          <h3>Entry correlate</h3>
+          <div class="related-list">
+            @for (related of relatedEntries(); track related.id) {
+              <article class="related-card">
+                <p class="related-meta">
+                  {{ related.createdAt | date:'dd MMM yyyy, HH:mm' }} · {{ related.sharedConceptCount }} concetti in comune
+                </p>
+                <p class="related-preview">{{ related.contentPreview }}</p>
+                <a [routerLink]="['/entries', related.id]">Apri entry correlata</a>
+              </article>
+            }
+          </div>
+        </section>
+      }
     </article>
   }
 </section>

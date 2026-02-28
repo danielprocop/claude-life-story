@@ -11,6 +11,13 @@ export interface EntryResponse {
   concepts: ConceptResponse[] | null;
 }
 
+export interface RelatedEntryResponse {
+  id: string;
+  contentPreview: string;
+  createdAt: string;
+  sharedConceptCount: number;
+}
+
 export interface EntryListResponse {
   id: string;
   contentPreview: string;
@@ -212,6 +219,10 @@ export class Api {
 
   getEntry(id: string): Observable<EntryResponse> {
     return this.http.get<EntryResponse>(`${this.baseUrl}/entries/${id}`);
+  }
+
+  getRelatedEntries(id: string, limit = 6): Observable<RelatedEntryResponse[]> {
+    return this.http.get<RelatedEntryResponse[]>(`${this.baseUrl}/entries/${id}/related?limit=${limit}`);
   }
 
   getConcepts(): Observable<ConceptResponse[]> {

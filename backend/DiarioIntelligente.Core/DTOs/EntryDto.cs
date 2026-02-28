@@ -17,6 +17,13 @@ public record EntryListResponse(
     int ConceptCount
 );
 
+public record RelatedEntryResponse(
+    Guid Id,
+    string ContentPreview,
+    DateTime CreatedAt,
+    int SharedConceptCount
+);
+
 public record PaginatedResponse<T>(
     List<T> Items,
     int TotalCount,

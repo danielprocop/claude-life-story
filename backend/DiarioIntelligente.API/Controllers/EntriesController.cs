@@ -86,4 +86,17 @@ public class EntriesController : AuthenticatedController
             )).ToList()
         ));
     }
+
+    [HttpGet("{id:guid}/related")]
+    public async Task<ActionResult<List<RelatedEntryResponse>>> GetRelated(Guid id, [FromQuery] int limit = 6)
+    {
+        var related = await _entryRepo.GetRelatedAsync(id, GetUserId(), Math.Clamp(limit, 1, 12));
+
+        return Ok(related.Select(x => new RelatedEntryResponse(
+            x.Entry.Id,
+            x.Entry.Content.Length > 140 ? x.Entry.Content[..140] + "..." : x.Entry.Content,
+            x.Entry.CreatedAt,
+            x.SharedConceptCount
+        )).ToList());
+    }
 }

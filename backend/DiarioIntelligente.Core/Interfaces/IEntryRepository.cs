@@ -12,4 +12,5 @@ public interface IEntryRepository
     Task<List<Entry>> GetByDateRangeAsync(Guid userId, DateTime from, DateTime to);
     Task<int> CountByUserAsync(Guid userId);
     Task<List<Entry>> SearchAsync(Guid userId, string query, int limit);
+    Task<List<(Entry Entry, int SharedConceptCount)>> GetRelatedAsync(Guid entryId, Guid userId, int limit);
 }
