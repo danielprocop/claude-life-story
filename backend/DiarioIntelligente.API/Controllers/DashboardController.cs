@@ -76,7 +76,7 @@ public class DashboardController : AuthenticatedController
             e.Id,
             e.Content.Length > 150 ? e.Content[..150] + "..." : e.Content,
             e.CreatedAt,
-            e.EntryConceptMaps?.Count ?? 0
+            e.HasPendingDerivedData ? 0 : e.EntryConceptMaps?.Count ?? 0
         )).ToList();
 
         return Ok(new DashboardResponse(stats, energyTrend, topConcepts, goalResponses, recentInsights, entryResponses));

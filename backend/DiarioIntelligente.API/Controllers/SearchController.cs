@@ -44,7 +44,7 @@ public class SearchController : AuthenticatedController
                 e.Id,
                 e.Content.Length > 180 ? e.Content[..180] + "..." : e.Content,
                 e.CreatedAt,
-                e.EntryConceptMaps.Count
+                e.HasPendingDerivedData ? 0 : e.EntryConceptMaps.Count
             )).ToList(),
             concepts.Select(c => new ConceptSearchHit(
                 c.Id,

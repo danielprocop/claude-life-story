@@ -89,6 +89,8 @@ pulizia dati derivati utente ->
 replay delle entry esistenti in ordine temporale ->
 ricostruzione coerente di concepts, connections, insights, energy e future search projection
 
+Durante questo intervallo le API di lettura non devono esporre derivati stantii per la entry in rielaborazione.
+
 ## 5. Recovery operativo
 
 Riavvio container o deploy ->

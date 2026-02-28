@@ -91,7 +91,7 @@ public class EntriesController : AuthenticatedController
                 e.Id,
                 e.Content.Length > 150 ? e.Content[..150] + "..." : e.Content,
                 e.CreatedAt,
-                e.EntryConceptMaps.Count
+                e.HasPendingDerivedData ? 0 : e.EntryConceptMaps.Count
             )).ToList(),
             totalCount,
             page,
@@ -112,20 +112,26 @@ public class EntriesController : AuthenticatedController
             entry.Content,
             entry.CreatedAt,
             entry.UpdatedAt,
-            entry.EntryConceptMaps.Select(m => new ConceptResponse(
-                m.Concept.Id,
-                m.Concept.Label,
-                m.Concept.Type,
-                m.Concept.FirstSeenAt,
-                m.Concept.LastSeenAt,
-                m.Concept.EntryConceptMaps?.Count ?? 0
-            )).ToList()
+            entry.HasPendingDerivedData
+                ? null
+                : entry.EntryConceptMaps.Select(m => new ConceptResponse(
+                    m.Concept.Id,
+                    m.Concept.Label,
+                    m.Concept.Type,
+                    m.Concept.FirstSeenAt,
+                    m.Concept.LastSeenAt,
+                    m.Concept.EntryConceptMaps?.Count ?? 0
+                )).ToList()
         ));
     }
 
     [HttpGet("{id:guid}/related")]
     public async Task<ActionResult<List<RelatedEntryResponse>>> GetRelated(Guid id, [FromQuery] int limit = 6)
     {
+        var entry = await _entryRepo.GetByIdAsync(id, GetUserId());
+        if (entry == null) return NotFound();
+        if (entry.HasPendingDerivedData) return Ok(new List<RelatedEntryResponse>());
+
         var related = await _entryRepo.GetRelatedAsync(id, GetUserId(), Math.Clamp(limit, 1, 12));
 
         return Ok(related.Select(x => new RelatedEntryResponse(

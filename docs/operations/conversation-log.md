@@ -69,3 +69,8 @@ Questa conversazione ha consolidato la direzione del progetto.
 - all'avvio dell'API ora viene eseguito uno startup recovery dei job persi in memoria
 - il recovery ricostruisce sia entry processing non completati sia rebuild utente rimasti sospesi dopo restart o deploy
 - il rischio residuo si riduce ma non e chiuso: le code non sono ancora persistenti, sono solo recuperabili dal source of truth
+
+### Aggiornamento successivo
+
+- le API di lettura entry, dashboard e search ora trattano le entry con rebuild pendente come `pending derived data`
+- in questo stato non vengono esposti concetti o conteggi stantii per evitare incoerenze subito dopo una correzione utente
