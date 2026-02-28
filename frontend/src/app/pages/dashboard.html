@@ -75,6 +75,34 @@
 
     <div class="dashboard-grid">
       <div class="card">
+        <h3>Debiti aperti</h3>
+        @if (openDebts().length) {
+          @for (debt of openDebts(); track debt.counterpartyEntityId) {
+            <div class="goal-item">
+              <span class="goal-title">{{ debt.counterpartyName }}</span>
+              <span class="goal-desc">{{ debt.amountOpen }} {{ debt.currency }} · {{ debt.openItems }} movimenti</span>
+            </div>
+          }
+        } @else {
+          <p class="empty">Nessun debito aperto.</p>
+        }
+      </div>
+
+      <div class="card">
+        <h3>Domande rapide</h3>
+        @if (questions().length) {
+          @for (question of questions(); track question.id) {
+            <div class="insight-item">
+              <span class="insight-type" data-type="question">{{ question.questionType }}</span>
+              <p>{{ question.prompt }}</p>
+            </div>
+          }
+        } @else {
+          <p class="empty">Nessuna domanda aperta.</p>
+        }
+      </div>
+
+      <div class="card">
         <h3>Energia / Stress (ultimi 14 giorni)</h3>
         @if (d.energyTrend.length > 0) {
           <div class="energy-bars">

@@ -14,6 +14,7 @@ Questa cartella e la fonte principale per:
 - [Product Roadmap](e:/development/personal/claude-life-story/docs/product/roadmap.md)
 - [Product Backlog](e:/development/personal/claude-life-story/docs/product/backlog.md)
 - [Cognitive Graph](e:/development/personal/claude-life-story/docs/cognitive-graph.md)
+- [Digital Person Algorithm](e:/development/personal/claude-life-story/docs/digital-person-algorithm.md)
 - [System Overview](e:/development/personal/claude-life-story/docs/architecture/system-overview.md)
 - [User Isolation Model](e:/development/personal/claude-life-story/docs/architecture/user-isolation-model.md)
 - [Search And Indexing Plan](e:/development/personal/claude-life-story/docs/architecture/search-and-indexing-plan.md)
@@ -23,6 +24,7 @@ Questa cartella e la fonte principale per:
 - [Release Runbook](e:/development/personal/claude-life-story/docs/operations/release-runbook.md)
 - [OpenSearch Provisioning](e:/development/personal/claude-life-story/docs/operations/opensearch-provisioning.md)
 - [Data Reset Runbook](e:/development/personal/claude-life-story/docs/operations/data-reset-runbook.md)
+- [Verification Guide](e:/development/personal/claude-life-story/docs/operations/verification-guide.md)
 - [Documentation Process](e:/development/personal/claude-life-story/docs/operations/documentation-process.md)
 - [Conversation Log](e:/development/personal/claude-life-story/docs/operations/conversation-log.md)
 

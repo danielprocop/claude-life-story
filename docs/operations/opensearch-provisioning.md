@@ -63,8 +63,25 @@ aws opensearch delete-domain --region eu-west-1 --domain-name diario-search-dev
 
 ## Next integration step
 
-With endpoint active, next implementation step is:
+Con endpoint attivo, integrazione applicativa ora implementata:
 
-1. implement real `ISearchProjectionService` with OpenSearch upsert/delete
-2. project `EntityCard` documents for canonical entities
-3. add query path for node retrieval and semantic candidate search
+1. `ISearchProjectionService` reale via `OpenSearchProjectionService`
+2. proiezione `EntityCard` per entita canoniche
+3. candidate retrieval per entity resolution via `OpenSearchEntityRetrievalService`
+
+## Runtime configuration
+
+Set env vars sul backend:
+
+- `Search__Enabled=true`
+- `Search__Endpoint=search-diario-search-dev-a4au7wkolarnygxf7xzyozr7uu.eu-west-1.es.amazonaws.com`
+- `Search__Region=eu-west-1`
+- `Search__EntityIndex=diario-entities`
+- `Search__EntryIndex=diario-entries`
+- `Search__GoalIndex=diario-goals`
+
+## Reindex/backfill
+
+Per rigenerare l'indice entita per l'utente corrente:
+
+`POST /api/operations/reindex/entities`

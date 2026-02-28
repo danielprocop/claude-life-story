@@ -12,13 +12,12 @@
 - introdurre source citations anche per risposte chat AI, non solo per review
 - aggiungere audit delle correzioni utente
 - migliorare il modello goal -> micro-step
-- migliorare il read model di search con ranking ibrido testo+vettori e non solo fallback relazionale
+- migliorare il read model di search con ranking ibrido testo+vettori (ora testo+fuzzy+candidate retrieval e attivo)
 - rendere persistenti le code di processing e rebuild oggi solo recuperabili via startup scan
-- collegare davvero OpenSearch alle nuove `EntityCard` canoniche
 
 ## Medio
 
-- introdurre projection pipeline reale verso OpenSearch (upsert/delete/reindex)
+- stabilizzare projection pipeline OpenSearch con monitoring e retry su failure transienti
 - definire summary document e insight document per retrieval
 - migliorare ranking del contesto in chat
 - preparare passaggio da RDS PostgreSQL a Aurora PostgreSQL

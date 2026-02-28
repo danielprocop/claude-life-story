@@ -136,3 +136,24 @@ Questa conversazione ha consolidato la direzione del progetto.
 - robustezza NLP migliorata: supporto `si chima` e nomi in minuscolo a inizio frase per merge entita
 - test backend portati a 12/12 verdi dopo i nuovi casi (merge typo, node search, personal model)
 - build frontend `ng build` completata con successo
+
+### Aggiornamento successivo
+
+- implementata integrazione OpenSearch reale:
+  - `OpenSearchProjectionService` per upsert/delete/reset di entry, entity card e goal
+  - `OpenSearchEntityRetrievalService` per candidate retrieval su entita
+  - wiring dinamico via config/env (`Search__Enabled`, `Search__Endpoint`, `Search__Region`)
+- `CognitiveGraphService` ora usa candidate retrieval OpenSearch anche in entity resolution e ranking node search
+- aggiunti nuovi endpoint ledger query:
+  - `GET /api/ledger/debts`
+  - `GET /api/ledger/debts/{counterparty}`
+  - `GET /api/ledger/spending/my`
+  - `GET /api/ledger/spending/events`
+- introdotto active learning minimale:
+  - tabella `ClarificationQuestions`
+  - tabella `PersonalPolicies`
+  - endpoint `GET /api/profile/questions` e `POST /api/profile/questions/{id}/answer`
+  - policy `default_split_policy` applicata automaticamente nelle inferenze successive
+- aggiunto endpoint operativo `POST /api/operations/reindex/entities` per backfill/reindex entity cards
+- aggiunti test su ledger query e clarification/policy flow
+- suite backend aggiornata a 14 test verdi (`dotnet test`)

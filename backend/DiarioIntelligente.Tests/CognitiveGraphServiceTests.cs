@@ -201,6 +201,8 @@ public class CognitiveGraphServiceTests
         var service = new CognitiveGraphService(
             db,
             new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
+            new NoOpEntityRetrievalService(),
+            new ClarificationService(db),
             new NullLogger<CognitiveGraphService>());
 
         var byRole = await service.SearchNodesAsync(user.Id, "madre", 10);
@@ -267,6 +269,8 @@ public class CognitiveGraphServiceTests
             var service = new CognitiveGraphService(
                 db,
                 new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
+                new NoOpEntityRetrievalService(),
+                new ClarificationService(db),
                 new NullLogger<CognitiveGraphService>());
 
             await service.ProcessEntryAsync(entry, new AiAnalysisResult());

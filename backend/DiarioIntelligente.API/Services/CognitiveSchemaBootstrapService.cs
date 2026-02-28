@@ -144,6 +144,35 @@ public sealed class CognitiveSchemaBootstrapService : IHostedService
         """,
         """CREATE UNIQUE INDEX IF NOT EXISTS "IX_SettlementPayments_SettlementId_EntryId_Amount" ON "SettlementPayments" ("SettlementId", "EntryId", "Amount")""",
         """
+        CREATE TABLE IF NOT EXISTS "PersonalPolicies" (
+            "Id" uuid NOT NULL PRIMARY KEY,
+            "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+            "PolicyKey" character varying(120) NOT NULL,
+            "PolicyValue" character varying(400) NOT NULL,
+            "Confidence" real NOT NULL,
+            "Origin" character varying(40) NOT NULL,
+            "Scope" character varying(200) NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "UpdatedAt" timestamp with time zone NOT NULL
+        )
+        """,
+        """CREATE UNIQUE INDEX IF NOT EXISTS "IX_PersonalPolicies_UserId_PolicyKey_Scope" ON "PersonalPolicies" ("UserId", "PolicyKey", "Scope")""",
+        """
+        CREATE TABLE IF NOT EXISTS "ClarificationQuestions" (
+            "Id" uuid NOT NULL PRIMARY KEY,
+            "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+            "EntryId" uuid NULL REFERENCES "Entries"("Id") ON DELETE SET NULL,
+            "QuestionType" character varying(80) NOT NULL,
+            "Prompt" character varying(600) NOT NULL,
+            "ContextJson" text NULL,
+            "Status" character varying(40) NOT NULL,
+            "Answer" text NULL,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "AnsweredAt" timestamp with time zone NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_ClarificationQuestions_UserId_Status_CreatedAt" ON "ClarificationQuestions" ("UserId", "Status", "CreatedAt")""",
+        """
         CREATE TABLE IF NOT EXISTS "EntryProcessingStates" (
             "EntryId" uuid NOT NULL PRIMARY KEY REFERENCES "Entries"("Id") ON DELETE CASCADE,
             "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
@@ -262,6 +291,35 @@ public sealed class CognitiveSchemaBootstrapService : IHostedService
         )
         """,
         """CREATE UNIQUE INDEX IF NOT EXISTS "IX_SettlementPayments_SettlementId_EntryId_Amount" ON "SettlementPayments" ("SettlementId", "EntryId", "Amount")""",
+        """
+        CREATE TABLE IF NOT EXISTS "PersonalPolicies" (
+            "Id" TEXT NOT NULL PRIMARY KEY,
+            "UserId" TEXT NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+            "PolicyKey" TEXT NOT NULL,
+            "PolicyValue" TEXT NOT NULL,
+            "Confidence" REAL NOT NULL,
+            "Origin" TEXT NOT NULL,
+            "Scope" TEXT NULL,
+            "CreatedAt" TEXT NOT NULL,
+            "UpdatedAt" TEXT NOT NULL
+        )
+        """,
+        """CREATE UNIQUE INDEX IF NOT EXISTS "IX_PersonalPolicies_UserId_PolicyKey_Scope" ON "PersonalPolicies" ("UserId", "PolicyKey", "Scope")""",
+        """
+        CREATE TABLE IF NOT EXISTS "ClarificationQuestions" (
+            "Id" TEXT NOT NULL PRIMARY KEY,
+            "UserId" TEXT NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+            "EntryId" TEXT NULL REFERENCES "Entries"("Id") ON DELETE SET NULL,
+            "QuestionType" TEXT NOT NULL,
+            "Prompt" TEXT NOT NULL,
+            "ContextJson" TEXT NULL,
+            "Status" TEXT NOT NULL,
+            "Answer" TEXT NULL,
+            "CreatedAt" TEXT NOT NULL,
+            "AnsweredAt" TEXT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_ClarificationQuestions_UserId_Status_CreatedAt" ON "ClarificationQuestions" ("UserId", "Status", "CreatedAt")""",
         """
         CREATE TABLE IF NOT EXISTS "EntryProcessingStates" (
             "EntryId" TEXT NOT NULL PRIMARY KEY REFERENCES "Entries"("Id") ON DELETE CASCADE,

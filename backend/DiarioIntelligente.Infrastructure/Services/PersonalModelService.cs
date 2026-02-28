@@ -55,6 +55,10 @@ public sealed class PersonalModelService : IPersonalModelService
             .Include(x => x.CounterpartyEntity)
             .ToListAsync(cancellationToken);
 
+        var policies = await _db.PersonalPolicies
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+
         var aggregateText = string.Join(" ", entries.Select(x => x.Content)).ToLowerInvariant();
 
         var personalitySignals = TraitRules
@@ -101,9 +105,9 @@ public sealed class PersonalModelService : IPersonalModelService
         var recentEntriesCount = entries.Count(item => item.CreatedAt >= DateTime.UtcNow.AddDays(-2));
         var suggestedMicroSteps = BuildMicroSteps(activeGoals, openSettlements, recentEntriesCount, topPeople);
 
-        var adaptationRules = BuildAdaptationRules(personalitySignals, philosophicalThemes);
+        var adaptationRules = BuildAdaptationRules(personalitySignals, philosophicalThemes, policies);
 
-        var contextSummary = BuildCompactContext(entries.Count, canonicalEntities.Count, activeGoals.Count, openSettlements.Count, topPeople);
+        var contextSummary = BuildCompactContext(entries.Count, canonicalEntities.Count, activeGoals.Count, openSettlements.Count, policies.Count, topPeople);
 
         return new PersonalModelResponse(
             DateTime.UtcNow,
@@ -147,7 +151,8 @@ public sealed class PersonalModelService : IPersonalModelService
 
     private static List<string> BuildAdaptationRules(
         List<ProfileSignalResponse> personalitySignals,
-        List<string> philosophicalThemes)
+        List<string> philosophicalThemes,
+        List<Core.Models.PersonalPolicy> policies)
     {
         var rules = new List<string>
         {
@@ -163,6 +168,9 @@ public sealed class PersonalModelService : IPersonalModelService
 
         if (philosophicalThemes.Contains("pragmatismo_operativo"))
             rules.Add("Evita consigli astratti: fornisci sempre un'azione verificabile.");
+
+        if (policies.Any(policy => policy.PolicyKey == "default_split_policy"))
+            rules.Add("Applica le policy di split personali senza richiedere conferme ripetitive.");
 
         return rules.Distinct(StringComparer.OrdinalIgnoreCase).Take(6).ToList();
     }
@@ -193,6 +201,7 @@ public sealed class PersonalModelService : IPersonalModelService
         int entityCount,
         int activeGoalsCount,
         int openSettlementsCount,
+        int policiesCount,
         List<string> topPeople)
     {
         var peopleSummary = topPeople.Count > 0
@@ -200,7 +209,7 @@ public sealed class PersonalModelService : IPersonalModelService
             : "Nessuna persona centrale ancora consolidata.";
 
         return
-            $"Memoria utente: {entriesCount} entry analizzate, {entityCount} nodi canonici, {activeGoalsCount} goal attivi, {openSettlementsCount} settlement aperti. " +
+            $"Memoria utente: {entriesCount} entry analizzate, {entityCount} nodi canonici, {activeGoalsCount} goal attivi, {openSettlementsCount} settlement aperti, {policiesCount} policy personali. " +
             peopleSummary;
     }
 }

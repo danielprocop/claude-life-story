@@ -26,6 +26,7 @@ Date: 2026-02-28
 - OpenSearch Serverless is still not reachable from this environment
 - OpenSearch domain `diario-search-dev` is now active and has a reachable endpoint
 - database reset (clean start) executed on PostgreSQL RDS on 2026-02-28 for all application tables
+- backend now includes real OpenSearch projection and retrieval services (no-op only as fallback when disabled)
 
 ## What Happens On Push
 
@@ -37,6 +38,10 @@ At the moment of this note:
 - frontend build, artifact upload, and deploy to Amplify are handled by GitHub Actions
 - AWS roles and trust configuration are already prepared
 - current blocker for semantic retrieval rollout: domain provisioning must complete before wiring `EntityCard` projection
+
+Current runtime requirement:
+
+- set `Search__Enabled=true` and `Search__Endpoint` on backend runtime env to activate OpenSearch path
 
 ## Backend Deploy Path
 

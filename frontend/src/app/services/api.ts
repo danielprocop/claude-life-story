@@ -160,6 +160,37 @@ export interface ProfileSignalResponse {
   rationale: string;
 }
 
+export interface OpenDebtResponse {
+  counterpartyEntityId: string;
+  counterpartyName: string;
+  amountOpen: number;
+  currency: string;
+  openItems: number;
+}
+
+export interface SpendingSummaryResponse {
+  from: string;
+  to: string;
+  total: number;
+  currency: string;
+}
+
+export interface EventSpendingSummaryResponse {
+  eventType: string;
+  from: string;
+  to: string;
+  totalEventSpend: number;
+  eventCount: number;
+  currency: string;
+}
+
+export interface ClarificationQuestionResponse {
+  id: string;
+  questionType: string;
+  prompt: string;
+  createdAt: string;
+}
+
 export interface DashboardStats {
   totalEntries: number;
   totalConcepts: number;
@@ -382,6 +413,37 @@ export class Api {
 
   getProfile(): Observable<PersonalModelResponse> {
     return this.http.get<PersonalModelResponse>(`${this.baseUrl}/profile`);
+  }
+
+  getProfileQuestions(limit = 5): Observable<ClarificationQuestionResponse[]> {
+    return this.http.get<ClarificationQuestionResponse[]>(`${this.baseUrl}/profile/questions?limit=${limit}`);
+  }
+
+  answerProfileQuestion(questionId: string, answer: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/profile/questions/${questionId}/answer`, { answer });
+  }
+
+  getOpenDebts(): Observable<OpenDebtResponse[]> {
+    return this.http.get<OpenDebtResponse[]>(`${this.baseUrl}/ledger/debts`);
+  }
+
+  getDebtForCounterparty(counterparty: string): Observable<OpenDebtResponse> {
+    return this.http.get<OpenDebtResponse>(`${this.baseUrl}/ledger/debts/${encodeURIComponent(counterparty)}`);
+  }
+
+  getMySpending(from?: string, to?: string): Observable<SpendingSummaryResponse> {
+    const params: string[] = [];
+    if (from) params.push(`from=${encodeURIComponent(from)}`);
+    if (to) params.push(`to=${encodeURIComponent(to)}`);
+    const qs = params.length ? `?${params.join('&')}` : '';
+    return this.http.get<SpendingSummaryResponse>(`${this.baseUrl}/ledger/spending/my${qs}`);
+  }
+
+  getEventSpending(eventType: string, from?: string, to?: string): Observable<EventSpendingSummaryResponse> {
+    const params = [`eventType=${encodeURIComponent(eventType)}`];
+    if (from) params.push(`from=${encodeURIComponent(from)}`);
+    if (to) params.push(`to=${encodeURIComponent(to)}`);
+    return this.http.get<EventSpendingSummaryResponse>(`${this.baseUrl}/ledger/spending/events?${params.join('&')}`);
   }
 
   getEnergyTrend(days = 30): Observable<EnergyTrendResponse> {

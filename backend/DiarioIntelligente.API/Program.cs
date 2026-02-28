@@ -22,7 +22,7 @@ var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__De
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 // Infrastructure (EF Core + repositories)
-builder.Services.AddInfrastructure(connectionString, databaseProvider);
+builder.Services.AddInfrastructure(connectionString, databaseProvider, builder.Configuration);
 
 // AI services: env var overrides appsettings for API key
 var openAiKeyFromEnv = Environment.GetEnvironmentVariable("OpenAI__ApiKey");

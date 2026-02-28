@@ -17,5 +17,7 @@ public class User
     public ICollection<CanonicalEntity> CanonicalEntities { get; set; } = new List<CanonicalEntity>();
     public ICollection<MemoryEvent> MemoryEvents { get; set; } = new List<MemoryEvent>();
     public ICollection<Settlement> Settlements { get; set; } = new List<Settlement>();
+    public ICollection<PersonalPolicy> PersonalPolicies { get; set; } = new List<PersonalPolicy>();
+    public ICollection<ClarificationQuestion> ClarificationQuestions { get; set; } = new List<ClarificationQuestion>();
     public ICollection<EntryProcessingState> EntryProcessingStates { get; set; } = new List<EntryProcessingState>();
 }

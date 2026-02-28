@@ -23,6 +23,8 @@ public class AppDbContext : DbContext
     public DbSet<EventParticipant> EventParticipants => Set<EventParticipant>();
     public DbSet<Settlement> Settlements => Set<Settlement>();
     public DbSet<SettlementPayment> SettlementPayments => Set<SettlementPayment>();
+    public DbSet<PersonalPolicy> PersonalPolicies => Set<PersonalPolicy>();
+    public DbSet<ClarificationQuestion> ClarificationQuestions => Set<ClarificationQuestion>();
     public DbSet<EntryProcessingState> EntryProcessingStates => Set<EntryProcessingState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -280,6 +282,39 @@ public class AppDbContext : DbContext
                 .HasForeignKey(x => x.EntryId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.SettlementId, x.EntryId, x.Amount }).IsUnique();
+        });
+
+        // PersonalPolicy
+        modelBuilder.Entity<PersonalPolicy>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.PolicyKey).HasMaxLength(120).IsRequired();
+            e.Property(x => x.PolicyValue).HasMaxLength(400).IsRequired();
+            e.Property(x => x.Origin).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Scope).HasMaxLength(200);
+            e.HasOne(x => x.User)
+                .WithMany(x => x.PersonalPolicies)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.UserId, x.PolicyKey, x.Scope }).IsUnique();
+        });
+
+        // ClarificationQuestion
+        modelBuilder.Entity<ClarificationQuestion>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.QuestionType).HasMaxLength(80).IsRequired();
+            e.Property(x => x.Prompt).HasMaxLength(600).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            e.HasOne(x => x.User)
+                .WithMany(x => x.ClarificationQuestions)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Entry)
+                .WithMany()
+                .HasForeignKey(x => x.EntryId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.UserId, x.Status, x.CreatedAt });
         });
 
         // EntryProcessingState

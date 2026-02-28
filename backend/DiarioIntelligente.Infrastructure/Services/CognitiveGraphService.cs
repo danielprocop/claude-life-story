@@ -18,6 +18,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         new("father_of_user", "Padre", new[] { "mio padre", "padre", "papà", "mio papà", "papa" }),
         new("brother_of_user", "Fratello", new[] { "mio fratello", "fratello" }),
         new("sister_of_user", "Sorella", new[] { "mia sorella", "sorella" }),
+        new("daughter_of_user", "Figlia", new[] { "mia figlia", "figlia", "le mie figlie", "mie figlie" }),
+        new("son_of_user", "Figlio", new[] { "mio figlio", "figlio", "i miei figli", "miei figli" }),
         new("wife_of_user", "Moglie", new[] { "mia moglie", "moglie" }),
         new("husband_of_user", "Marito", new[] { "mio marito", "marito" })
     };
@@ -34,15 +36,21 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
     private readonly AppDbContext _db;
     private readonly ISearchProjectionService _searchProjectionService;
+    private readonly IEntityRetrievalService _entityRetrievalService;
+    private readonly IClarificationService _clarificationService;
     private readonly ILogger<CognitiveGraphService> _logger;
 
     public CognitiveGraphService(
         AppDbContext db,
         ISearchProjectionService searchProjectionService,
+        IEntityRetrievalService entityRetrievalService,
+        IClarificationService clarificationService,
         ILogger<CognitiveGraphService> logger)
     {
         _db = db;
         _searchProjectionService = searchProjectionService;
+        _entityRetrievalService = entityRetrievalService;
+        _clarificationService = clarificationService;
         _logger = logger;
     }
 
@@ -103,7 +111,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             MarkChanged(entity, changedEntities);
         }
 
-        var eventSignal = ExtractEventSignal(entry.Content, analysis, resolvedNameMentions, roleContext);
+        var eventSignal = ExtractEventSignal(entry.Content, entry.CreatedAt, analysis, resolvedNameMentions, roleContext);
         if (eventSignal != null)
         {
             var participants = new List<CanonicalEntity>();
@@ -153,7 +161,23 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 MarkChanged(resolvedCounterparty, changedEntities);
             }
 
+            eventSignal = await ApplyPersonalPolicyAsync(
+                entry.UserId,
+                eventSignal,
+                participants.Count + 1,
+                cancellationToken);
+
             await UpsertEventAsync(entry, eventSignal, participants, entities, changedEntities, cancellationToken);
+
+            await _clarificationService.EvaluateEntryAsync(
+                entry.UserId,
+                entry,
+                eventSignal.EventType,
+                eventSignal.EventTotal,
+                eventSignal.MyShare,
+                participants.Count + 1,
+                eventSignal.SettlementAmount.HasValue,
+                cancellationToken);
         }
         else
         {
@@ -231,6 +255,10 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         var rawQuery = query?.Trim() ?? string.Empty;
         var normalizedQuery = Normalize(rawQuery);
         var loweredQuery = rawQuery.ToLowerInvariant();
+        var topFromOpenSearch = new List<EntityRetrievalCandidate>();
+
+        if (!string.IsNullOrWhiteSpace(rawQuery))
+            topFromOpenSearch = await _entityRetrievalService.SearchEntityCandidatesAsync(userId, rawQuery, safeLimit * 2, cancellationToken);
 
         IQueryable<CanonicalEntity> filtered = _db.CanonicalEntities.Where(x => x.UserId == userId);
         if (!string.IsNullOrWhiteSpace(normalizedQuery))
@@ -239,7 +267,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 x.NormalizedCanonicalName.Contains(normalizedQuery) ||
                 x.Aliases.Any(alias => alias.NormalizedAlias.Contains(normalizedQuery)) ||
                 (!string.IsNullOrWhiteSpace(x.AnchorKey) && x.AnchorKey!.Contains(loweredQuery)) ||
-                x.EntityCard.ToLower().Contains(loweredQuery));
+                x.EntityCard.ToLower().Contains(loweredQuery) ||
+                topFromOpenSearch.Select(candidate => candidate.EntityId).Contains(x.Id));
         }
 
         var totalCount = await filtered.CountAsync(cancellationToken);
@@ -256,7 +285,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             .Select(x => new
             {
                 Entity = x,
-                Score = ScoreEntityForSearch(x, normalizedQuery, loweredQuery)
+                Score = ScoreEntityForSearch(x, normalizedQuery, loweredQuery, topFromOpenSearch)
             })
             .OrderByDescending(x => x.Score)
             .ThenByDescending(x => x.Entity.UpdatedAt)
@@ -378,7 +407,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             .Include(x => x.Entity)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var title = BuildEventTitle(eventSignal, entry.CreatedAt);
+        var title = BuildEventTitle(eventSignal, eventSignal.OccurredAt);
         var eventEntity = existingEvent?.Entity
             ?? await CreateEntityAsync(entry.UserId, "event", title, null, entities, cancellationToken);
 
@@ -399,7 +428,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         memoryEvent.EventType = eventSignal.EventType;
         memoryEvent.Title = title;
-        memoryEvent.OccurredAt = entry.CreatedAt;
+        memoryEvent.OccurredAt = eventSignal.OccurredAt;
         memoryEvent.EventTotal = eventSignal.EventTotal;
         memoryEvent.MyShare = eventSignal.MyShare;
         memoryEvent.Currency = eventSignal.Currency;
@@ -469,6 +498,46 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 _db.Settlements.Add(settlement);
             }
         }
+    }
+
+    private async Task<EventSignal> ApplyPersonalPolicyAsync(
+        Guid userId,
+        EventSignal eventSignal,
+        int participantCountIncludingUser,
+        CancellationToken cancellationToken)
+    {
+        if (eventSignal.SettlementAmount.HasValue || !eventSignal.EventTotal.HasValue || participantCountIncludingUser <= 0)
+            return eventSignal;
+
+        var scope = $"eventType:{eventSignal.EventType.ToLowerInvariant()}";
+        var policy = await _db.PersonalPolicies
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.PolicyKey == "default_split_policy" && x.Scope == scope, cancellationToken);
+
+        if (policy == null || string.IsNullOrWhiteSpace(policy.PolicyValue))
+            return eventSignal;
+
+        decimal? myShare = policy.PolicyValue switch
+        {
+            "equal" => Math.Round(eventSignal.EventTotal.Value / participantCountIncludingUser, 2, MidpointRounding.AwayFromZero),
+            var value when value.StartsWith("percentage:", StringComparison.OrdinalIgnoreCase) =>
+                decimal.TryParse(value["percentage:".Length..], NumberStyles.Number, CultureInfo.InvariantCulture, out var percent)
+                    ? Math.Round(eventSignal.EventTotal.Value * (percent / 100m), 2, MidpointRounding.AwayFromZero)
+                    : eventSignal.MyShare,
+            var value when value.StartsWith("fixed:", StringComparison.OrdinalIgnoreCase) =>
+                decimal.TryParse(value["fixed:".Length..], NumberStyles.Number, CultureInfo.InvariantCulture, out var fixedAmount)
+                    ? fixedAmount
+                    : eventSignal.MyShare,
+            _ => eventSignal.MyShare
+        };
+
+        if (!myShare.HasValue)
+            return eventSignal;
+
+        return eventSignal with
+        {
+            MyShare = myShare,
+            Notes = string.IsNullOrWhiteSpace(eventSignal.Notes) ? "policy_split" : $"{eventSignal.Notes};policy_split"
+        };
     }
 
     private async Task ApplyPaymentAsync(Entry entry, CanonicalEntity counterparty, PaymentSignal paymentSignal, CancellationToken cancellationToken)
@@ -595,8 +664,15 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             return exact;
         }
 
-        var ranked = entities
+        var openSearchCandidates = await _entityRetrievalService
+            .SearchEntityCandidatesAsync(userId, rawName, 8, cancellationToken);
+
+        var candidatePool = entities
             .Where(x => x.Kind == "person")
+            .Where(x => openSearchCandidates.Count == 0 || openSearchCandidates.Any(candidate => candidate.EntityId == x.Id))
+            .ToList();
+
+        var ranked = candidatePool
             .Select(x => new
             {
                 Entity = x,
@@ -855,6 +931,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
     private static EventSignal? ExtractEventSignal(
         string content,
+        DateTime createdAt,
         AiAnalysisResult analysis,
         Dictionary<string, CanonicalEntity> resolvedNames,
         Dictionary<string, CanonicalEntity> roleContext)
@@ -893,6 +970,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         return new EventSignal(
             eventType ?? "expense",
+            ResolveOccurredAt(content, createdAt),
             "EUR",
             eventTotal,
             myShare,
@@ -1043,6 +1121,33 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         return match.Success ? ParseDecimal(match.Groups["amount"].Value) : null;
     }
 
+    private static DateTime ResolveOccurredAt(string content, DateTime fallbackUtc)
+    {
+        var lower = content.ToLowerInvariant();
+
+        var explicitDate = Regex.Match(content, @"\b(?<d>\d{1,2})[\/\-](?<m>\d{1,2})(?:[\/\-](?<y>\d{2,4}))?\b");
+        if (explicitDate.Success)
+        {
+            var day = int.Parse(explicitDate.Groups["d"].Value);
+            var month = int.Parse(explicitDate.Groups["m"].Value);
+            var year = explicitDate.Groups["y"].Success ? int.Parse(explicitDate.Groups["y"].Value) : fallbackUtc.Year;
+            if (year < 100)
+                year += 2000;
+
+            if (DateTime.TryParse($"{year:D4}-{month:D2}-{day:D2}", out var parsed))
+                return DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+        }
+
+        if (lower.Contains("ieri"))
+            return fallbackUtc.AddDays(-1);
+        if (lower.Contains("domani"))
+            return fallbackUtc.AddDays(1);
+        if (lower.Contains("oggi"))
+            return fallbackUtc;
+
+        return fallbackUtc;
+    }
+
     private static RoleAnchorDefinition? FindRoleByAlias(string rawAlias)
     {
         var normalized = Normalize(rawAlias);
@@ -1108,7 +1213,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             settlement.Event?.Title);
     }
 
-    private static int ScoreEntityForSearch(CanonicalEntity entity, string normalizedQuery, string loweredQuery)
+    private static int ScoreEntityForSearch(
+        CanonicalEntity entity,
+        string normalizedQuery,
+        string loweredQuery,
+        List<EntityRetrievalCandidate> openSearchCandidates)
     {
         if (string.IsNullOrWhiteSpace(normalizedQuery) && string.IsNullOrWhiteSpace(loweredQuery))
             return 0;
@@ -1135,6 +1244,14 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         }
         if (!string.IsNullOrWhiteSpace(entity.AnchorKey))
             score += 5;
+
+        var openSearchMatch = openSearchCandidates.FirstOrDefault(candidate => candidate.EntityId == entity.Id);
+        if (openSearchMatch != null)
+        {
+            var openSearchBoost = (int)Math.Round(openSearchMatch.Score * 12, MidpointRounding.AwayFromZero);
+            score += Math.Clamp(openSearchBoost, 0, 120);
+        }
+
         return score;
     }
 
@@ -1275,6 +1392,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
     private sealed record EventSignal(
         string EventType,
+        DateTime OccurredAt,
         string Currency,
         decimal? EventTotal,
         decimal? MyShare,

@@ -75,6 +75,13 @@ Il backend espone una `Node View` user-scoped via `GET /api/nodes/{entityId}`.
 
 Per la consultazione generale dei nodi canonici e disponibile anche `GET /api/nodes?q=...&limit=...`.
 
+Per query finanziarie affidabili sono esposti anche:
+
+- `GET /api/ledger/debts`
+- `GET /api/ledger/debts/{counterparty}`
+- `GET /api/ledger/spending/my`
+- `GET /api/ledger/spending/events`
+
 ### Persona
 
 Restituisce:
@@ -122,6 +129,13 @@ Il backend espone `GET /api/profile` per restituire un modello personale user-sc
 - micro-step suggeriti
 - regole di adattamento operativo
 
+Per active learning minimale:
+
+- `GET /api/profile/questions`
+- `POST /api/profile/questions/{id}/answer`
+
+Le risposte alimentano `PersonalPolicy` e riducono domande ripetitive su split/inferenze.
+
 ## OpenSearch e Aurora
 
 - Aurora PostgreSQL resta il source of truth canonico.
@@ -145,6 +159,9 @@ Gia implementato:
 - `Node View` server-side
 - ricerca nodi canonici (`GET /api/nodes`)
 - modello personale utente (`GET /api/profile`)
+- ledger query dedicate (`/api/ledger/...`)
+- active learning (`ClarificationQuestions` + `PersonalPolicies`)
+- reindex entity card endpoint (`POST /api/operations/reindex/entities`)
 
 Non ancora implementato:
 

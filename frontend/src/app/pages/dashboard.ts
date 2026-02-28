@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Api, DashboardResponse, PersonalModelResponse } from '../services/api';
+import { Api, ClarificationQuestionResponse, DashboardResponse, OpenDebtResponse, PersonalModelResponse } from '../services/api';
 
 @Component({
   selector: 'app-dashboard',
@@ -12,6 +12,8 @@ import { Api, DashboardResponse, PersonalModelResponse } from '../services/api';
 export class Dashboard implements OnInit {
   data = signal<DashboardResponse | null>(null);
   profile = signal<PersonalModelResponse | null>(null);
+  openDebts = signal<OpenDebtResponse[]>([]);
+  questions = signal<ClarificationQuestionResponse[]>([]);
   loading = signal(true);
   profileLoading = signal(true);
 
@@ -32,6 +34,14 @@ export class Dashboard implements OnInit {
         this.profileLoading.set(false);
       },
       error: () => this.profileLoading.set(false),
+    });
+
+    this.api.getOpenDebts().subscribe({
+      next: (debts) => this.openDebts.set(debts),
+    });
+
+    this.api.getProfileQuestions().subscribe({
+      next: (questions) => this.questions.set(questions),
     });
   }
 
