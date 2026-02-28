@@ -57,4 +57,17 @@ public class ConceptRepository : IConceptRepository
         _db.EntryConceptMaps.Add(map);
         await _db.SaveChangesAsync();
     }
+
+    public async Task<List<Concept>> SearchAsync(Guid userId, string query, int limit)
+    {
+        var normalizedQuery = query.Trim().ToLower();
+
+        return await _db.Concepts
+            .Where(c => c.UserId == userId &&
+                (c.Label.ToLower().Contains(normalizedQuery) || c.Type.ToLower().Contains(normalizedQuery)))
+            .Include(c => c.EntryConceptMaps)
+            .OrderByDescending(c => c.LastSeenAt)
+            .Take(limit)
+            .ToListAsync();
+    }
 }

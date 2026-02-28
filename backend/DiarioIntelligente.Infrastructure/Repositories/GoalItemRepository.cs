@@ -34,6 +34,20 @@ public class GoalItemRepository : IGoalItemRepository
             .ToListAsync();
     }
 
+    public async Task<List<GoalItem>> SearchAsync(Guid userId, string query, int limit)
+    {
+        var normalizedQuery = query.Trim().ToLower();
+
+        return await _db.GoalItems
+            .Where(g => g.UserId == userId &&
+                (g.Title.ToLower().Contains(normalizedQuery)
+                 || (g.Description != null && g.Description.ToLower().Contains(normalizedQuery))))
+            .Include(g => g.SubGoals)
+            .OrderByDescending(g => g.CreatedAt)
+            .Take(limit)
+            .ToListAsync();
+    }
+
     public async Task UpdateAsync(GoalItem goal)
     {
         _db.GoalItems.Update(goal);

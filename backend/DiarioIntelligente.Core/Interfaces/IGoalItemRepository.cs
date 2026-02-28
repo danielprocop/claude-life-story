@@ -7,6 +7,7 @@ public interface IGoalItemRepository
     Task<GoalItem> CreateAsync(GoalItem goal);
     Task<GoalItem?> GetByIdAsync(Guid id, Guid userId);
     Task<List<GoalItem>> GetRootGoalsAsync(Guid userId);
+    Task<List<GoalItem>> SearchAsync(Guid userId, string query, int limit);
     Task UpdateAsync(GoalItem goal);
     Task DeleteAsync(Guid id);
 }

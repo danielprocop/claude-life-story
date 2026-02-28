@@ -154,6 +154,37 @@ export interface ReviewResponse {
   generatedAt: string;
 }
 
+export interface SearchResponse {
+  query: string;
+  entries: EntrySearchHit[];
+  concepts: ConceptSearchHit[];
+  goalItems: GoalItemSearchHit[];
+}
+
+export interface EntrySearchHit {
+  id: string;
+  preview: string;
+  createdAt: string;
+  conceptCount: number;
+}
+
+export interface ConceptSearchHit {
+  id: string;
+  label: string;
+  type: string;
+  entryCount: number;
+  lastSeenAt: string;
+}
+
+export interface GoalItemSearchHit {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  createdAt: string;
+  subGoalCount: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -230,5 +261,11 @@ export class Api {
 
   getPatterns(days = 30): Observable<string[]> {
     return this.http.get<string[]>(`${this.baseUrl}/patterns?days=${days}`);
+  }
+
+  search(query: string, limit = 8): Observable<SearchResponse> {
+    return this.http.get<SearchResponse>(
+      `${this.baseUrl}/search?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
   }
 }

@@ -70,4 +70,16 @@ public class EntryRepository : IEntryRepository
     {
         return await _db.Entries.CountAsync(e => e.UserId == userId);
     }
+
+    public async Task<List<Entry>> SearchAsync(Guid userId, string query, int limit)
+    {
+        var normalizedQuery = query.Trim().ToLower();
+
+        return await _db.Entries
+            .Where(e => e.UserId == userId && e.Content.ToLower().Contains(normalizedQuery))
+            .OrderByDescending(e => e.CreatedAt)
+            .Take(limit)
+            .Include(e => e.EntryConceptMaps)
+            .ToListAsync();
+    }
 }

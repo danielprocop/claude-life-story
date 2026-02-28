@@ -1,6 +1,7 @@
 using DiarioIntelligente.Core.Interfaces;
 using DiarioIntelligente.Infrastructure.Data;
 using DiarioIntelligente.Infrastructure.Repositories;
+using DiarioIntelligente.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IEnergyLogRepository, EnergyLogRepository>();
         services.AddScoped<IGoalItemRepository, GoalItemRepository>();
         services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
+        services.AddScoped<ISearchProjectionService, NoOpSearchProjectionService>();
 
         return services;
     }

@@ -43,3 +43,11 @@ Questa conversazione ha consolidato la direzione del progetto.
 - il job frontend e fallito
 - decisione operativa: GitHub Actions per backend, Amplify native CI/CD per frontend
 - la documentazione e stata estesa con modello di isolamento utente, piano search/indexing e runbook di rilascio
+
+### Aggiornamento successivo
+
+- il push `ac989b5` ha avviato un nuovo run GitHub Actions
+- App Runner ha completato con successo una nuova `START_DEPLOYMENT`
+- il backend ora espone una astrazione `ISearchProjectionService`
+- l'implementazione attuale e `NoOp`, per preparare l'integrazione futura con OpenSearch senza cambiare i flussi applicativi
+- e stata aggiunta una ricerca globale per utente su entry, concetti e goal come fallback applicativo prima di OpenSearch

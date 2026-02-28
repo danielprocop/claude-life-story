@@ -10,10 +10,12 @@ namespace DiarioIntelligente.API.Controllers;
 public class GoalItemsController : AuthenticatedController
 {
     private readonly IGoalItemRepository _goalRepo;
+    private readonly ISearchProjectionService _searchProjectionService;
 
-    public GoalItemsController(IGoalItemRepository goalRepo)
+    public GoalItemsController(IGoalItemRepository goalRepo, ISearchProjectionService searchProjectionService)
     {
         _goalRepo = goalRepo;
+        _searchProjectionService = searchProjectionService;
     }
 
     [HttpGet]
@@ -47,6 +49,7 @@ public class GoalItemsController : AuthenticatedController
         };
 
         await _goalRepo.CreateAsync(goal);
+        await _searchProjectionService.ProjectGoalItemAsync(goal, HttpContext.RequestAborted);
         return CreatedAtAction(nameof(GetById), new { id = goal.Id }, MapGoalItem(goal));
     }
 
@@ -65,6 +68,7 @@ public class GoalItemsController : AuthenticatedController
         }
 
         await _goalRepo.UpdateAsync(goal);
+        await _searchProjectionService.ProjectGoalItemAsync(goal, HttpContext.RequestAborted);
         return Ok(MapGoalItem(goal));
     }
 
@@ -75,6 +79,7 @@ public class GoalItemsController : AuthenticatedController
         if (goal == null) return NotFound();
 
         await _goalRepo.DeleteAsync(id);
+        await _searchProjectionService.DeleteGoalItemAsync(id, goal.UserId, HttpContext.RequestAborted);
         return NoContent();
     }
 

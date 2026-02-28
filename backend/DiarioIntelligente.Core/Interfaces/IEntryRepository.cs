@@ -11,4 +11,5 @@ public interface IEntryRepository
     Task<List<Entry>> GetEntriesWithEmbeddingsAsync(Guid userId);
     Task<List<Entry>> GetByDateRangeAsync(Guid userId, DateTime from, DateTime to);
     Task<int> CountByUserAsync(Guid userId);
+    Task<List<Entry>> SearchAsync(Guid userId, string query, int limit);
 }

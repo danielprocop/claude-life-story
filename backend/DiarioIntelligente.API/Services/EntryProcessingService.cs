@@ -55,6 +55,7 @@ public class EntryProcessingService : BackgroundService
         var connectionRepo = scope.ServiceProvider.GetRequiredService<IConnectionRepository>();
         var insightRepo = scope.ServiceProvider.GetRequiredService<IInsightRepository>();
         var energyRepo = scope.ServiceProvider.GetRequiredService<IEnergyLogRepository>();
+        var searchProjectionService = scope.ServiceProvider.GetRequiredService<ISearchProjectionService>();
 
         // Step 1: Generate embedding
         _logger.LogInformation("Generating embedding for entry {EntryId}", job.EntryId);
@@ -216,6 +217,10 @@ public class EntryProcessingService : BackgroundService
                 });
             }
         }
+
+        var projectedEntry = await entryRepo.GetByIdAsync(job.EntryId, job.UserId);
+        if (projectedEntry != null)
+            await searchProjectionService.ProjectEntryAsync(projectedEntry, ct);
 
         _logger.LogInformation("Entry {EntryId} processing completed", job.EntryId);
     }

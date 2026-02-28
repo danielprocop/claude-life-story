@@ -10,4 +10,5 @@ public interface IConceptRepository
     Task<List<Concept>> GetByUserAsync(Guid userId);
     Task<List<Concept>> GetGoalsAndDesiresAsync(Guid userId);
     Task AddEntryConceptMapAsync(EntryConceptMap map);
+    Task<List<Concept>> SearchAsync(Guid userId, string query, int limit);
 }

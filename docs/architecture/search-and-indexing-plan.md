@@ -79,6 +79,16 @@ Il pattern consigliato e:
 3. projection builder
 4. upsert su OpenSearch
 
+## Stato applicativo attuale
+
+Il codice backend espone gia un'astrazione `ISearchProjectionService`.
+
+Al momento l'implementazione e `NoOp`, cosi:
+
+- il dominio applicativo non dipende ancora da OpenSearch
+- controller e pipeline AI hanno gia un punto di aggancio stabile
+- il passaggio futuro a una projection reale richiedera sostituire il servizio, non riscrivere i flussi
+
 ## Query model
 
 Ogni query deve essere:

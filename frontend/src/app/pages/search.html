@@ -1,0 +1,106 @@
+<section class="search-page">
+  <header class="page-header">
+    <p class="eyebrow">Retrieval</p>
+    <h2>Ricerca nella memoria personale</h2>
+    <p class="page-subtitle">
+      Cerca entry, concetti e obiettivi del tuo profilo. Questo e il fallback applicativo prima del layer OpenSearch.
+    </p>
+  </header>
+
+  <form class="search-bar" (ngSubmit)="submit()">
+    <input
+      [ngModel]="query()"
+      (ngModelChange)="query.set($event)"
+      name="query"
+      type="search"
+      placeholder="Cerca progetto, persona, problema, idea..."
+    />
+    <button type="submit" [disabled]="loading()">
+      {{ loading() ? 'Ricerca...' : 'Cerca' }}
+    </button>
+  </form>
+
+  @if (!hasSearched()) {
+    <section class="empty-state">
+      <h3>Nessuna query eseguita</h3>
+      <p>Prova con nomi di persone, obiettivi, problemi ricorrenti o frasi contenute nelle entry.</p>
+    </section>
+  } @else if (loading()) {
+    <section class="empty-state">
+      <h3>Ricerca in corso</h3>
+      <p>Sto interrogando il tuo dataset personale.</p>
+    </section>
+  } @else if (totalResults() === 0) {
+    <section class="empty-state">
+      <h3>Nessun risultato</h3>
+      <p>Non ho trovato corrispondenze per "{{ query() }}".</p>
+    </section>
+  } @else {
+    <section class="result-summary">
+      <strong>{{ totalResults() }}</strong> risultati per <span>"{{ results()?.query }}"</span>
+    </section>
+
+    @if (results()?.entries?.length) {
+      <section class="result-section">
+        <div class="section-header">
+          <h3>Entry</h3>
+          <span>{{ results()!.entries.length }}</span>
+        </div>
+
+        <div class="result-grid">
+          @for (entry of results()!.entries; track entry.id) {
+            <article class="result-card">
+              <p class="result-meta">{{ entry.createdAt | date:'dd MMM yyyy, HH:mm' }} · {{ entry.conceptCount }} concetti</p>
+              <p class="result-text">{{ entry.preview }}</p>
+              <a [routerLink]="['/timeline']">Apri timeline</a>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (results()?.concepts?.length) {
+      <section class="result-section">
+        <div class="section-header">
+          <h3>Concetti</h3>
+          <span>{{ results()!.concepts.length }}</span>
+        </div>
+
+        <div class="result-grid compact">
+          @for (concept of results()!.concepts; track concept.id) {
+            <article class="result-card concept-card">
+              <p class="pill">{{ concept.type }}</p>
+              <h4>{{ concept.label }}</h4>
+              <p class="result-meta">Usato in {{ concept.entryCount }} entry · ultimo uso {{ concept.lastSeenAt | date:'dd MMM yyyy' }}</p>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (results()?.goalItems?.length) {
+      <section class="result-section">
+        <div class="section-header">
+          <h3>Goal</h3>
+          <span>{{ results()!.goalItems.length }}</span>
+        </div>
+
+        <div class="result-grid">
+          @for (goal of results()!.goalItems; track goal.id) {
+            <article class="result-card goal-card">
+              <div class="goal-head">
+                <h4>{{ goal.title }}</h4>
+                <span class="goal-status" [attr.data-status]="goal.status">{{ goal.status }}</span>
+              </div>
+              @if (goal.description) {
+                <p class="result-text">{{ goal.description }}</p>
+              }
+              <p class="result-meta">{{ goal.subGoalCount }} sotto-step · creato {{ goal.createdAt | date:'dd MMM yyyy' }}</p>
+              <a [routerLink]="['/goals']">Apri obiettivi</a>
+            </article>
+          }
+        </div>
+      </section>
+    }
+  }
+</section>

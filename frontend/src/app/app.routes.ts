@@ -17,6 +17,7 @@ export const routes: Routes = [
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard').then(m => m.Dashboard) },
       { path: 'write', loadComponent: () => import('./pages/write').then(m => m.Write) },
       { path: 'chat', loadComponent: () => import('./pages/chat').then(m => m.Chat) },
+      { path: 'search', loadComponent: () => import('./pages/search').then(m => m.SearchPage) },
       { path: 'timeline', loadComponent: () => import('./pages/timeline').then(m => m.Timeline) },
       { path: 'graph', loadComponent: () => import('./pages/graph').then(m => m.Graph) },
       { path: 'goals', loadComponent: () => import('./pages/goals').then(m => m.Goals) },
