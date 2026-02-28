@@ -2,6 +2,8 @@ namespace DiarioIntelligente.Core.DTOs;
 
 public record CreateEntryRequest(string Content);
 
+public record UpdateEntryRequest(string Content);
+
 public record EntryResponse(
     Guid Id,
     string Content,

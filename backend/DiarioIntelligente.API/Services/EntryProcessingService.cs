@@ -56,14 +56,28 @@ public class EntryProcessingService : BackgroundService
         var insightRepo = scope.ServiceProvider.GetRequiredService<IInsightRepository>();
         var energyRepo = scope.ServiceProvider.GetRequiredService<IEnergyLogRepository>();
         var searchProjectionService = scope.ServiceProvider.GetRequiredService<ISearchProjectionService>();
+        var entry = await entryRepo.GetByIdAsync(job.EntryId, job.UserId);
+
+        if (entry == null)
+        {
+            _logger.LogInformation(
+                "Entry {EntryId} for user {UserId} no longer exists. Skipping processing.",
+                job.EntryId,
+                job.UserId);
+            await searchProjectionService.DeleteEntryAsync(job.EntryId, job.UserId, ct);
+            return;
+        }
+
+        var content = entry.Content;
 
         // Step 1: Generate embedding
         _logger.LogInformation("Generating embedding for entry {EntryId}", job.EntryId);
-        var embedding = await aiService.GetEmbeddingAsync(job.Content);
+        var embedding = await aiService.GetEmbeddingAsync(content);
 
         if (embedding.Length == 0)
         {
             _logger.LogInformation("AI not configured — entry {EntryId} saved without analysis", job.EntryId);
+            await searchProjectionService.ProjectEntryAsync(entry, ct);
             return;
         }
 
@@ -72,7 +86,7 @@ public class EntryProcessingService : BackgroundService
 
         // Step 2: Analyze entry with AI
         _logger.LogInformation("Analyzing entry {EntryId} with AI", job.EntryId);
-        var analysis = await aiService.AnalyzeEntryAsync(job.Content);
+        var analysis = await aiService.AnalyzeEntryAsync(content);
 
         // Step 3: Save energy/stress log
         var dominantEmotion = analysis.Emotions.FirstOrDefault();

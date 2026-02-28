@@ -8,13 +8,55 @@
   } @else if (entry(); as e) {
     <article class="entry-card">
       <header class="entry-header">
-        <p class="entry-date">{{ e.createdAt | date:'dd MMM yyyy, HH:mm' }}</p>
-        @if (e.updatedAt) {
-          <p class="entry-updated">Aggiornata {{ e.updatedAt | date:'dd MMM yyyy, HH:mm' }}</p>
-        }
+        <div>
+          <p class="entry-date">{{ e.createdAt | date:'dd MMM yyyy, HH:mm' }}</p>
+          @if (e.updatedAt) {
+            <p class="entry-updated">Aggiornata {{ e.updatedAt | date:'dd MMM yyyy, HH:mm' }}</p>
+          }
+        </div>
+
+        <div class="entry-actions">
+          @if (!editing()) {
+            <button type="button" class="secondary-button" (click)="startEditing()">Modifica</button>
+          }
+          <button type="button" class="danger-button" (click)="deleteEntry()" [disabled]="deleting() || saving()">
+            {{ deleting() ? 'Eliminazione...' : 'Elimina' }}
+          </button>
+        </div>
       </header>
 
-      <div class="entry-content">{{ e.content }}</div>
+      @if (statusMessage()) {
+        <div class="status-banner">{{ statusMessage() }}</div>
+      }
+
+      @if (editing()) {
+        <section class="editor-section">
+          <label class="editor-label" for="entry-content">Contenuto</label>
+          <textarea
+            id="entry-content"
+            class="editor-input"
+            [ngModel]="draftContent()"
+            (ngModelChange)="draftContent.set($event)"
+            rows="10"></textarea>
+          <p class="editor-note">
+            Le connessioni, i concetti e gli insight verranno ricalcolati in background per mantenere la memoria coerente.
+          </p>
+          <div class="editor-actions">
+            <button
+              type="button"
+              class="primary-button"
+              (click)="save()"
+              [disabled]="saving() || !draftContent().trim()">
+              {{ saving() ? 'Salvataggio...' : 'Salva modifica' }}
+            </button>
+            <button type="button" class="secondary-button" (click)="cancelEditing()" [disabled]="saving()">
+              Annulla
+            </button>
+          </div>
+        </section>
+      } @else {
+        <div class="entry-content">{{ e.content }}</div>
+      }
 
       @if (e.concepts?.length) {
         <section class="concepts-section">
@@ -27,6 +69,13 @@
               </div>
             }
           </div>
+        </section>
+      } @else if (statusMessage()) {
+        <section class="concepts-section">
+          <h3>Ricalcolo in corso</h3>
+          <p class="empty-state">
+            I dati derivati di questa entry verranno ricostruiti automaticamente a partire dal nuovo contenuto.
+          </p>
         </section>
       }
 

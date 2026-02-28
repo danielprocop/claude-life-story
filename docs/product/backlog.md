@@ -14,7 +14,7 @@
 - migliorare il modello goal -> micro-step
 - definire read model per search e retrieval
 - evolvere la nuova ricerca globale applicativa in retrieval serio con ranking e filtri
-- espandere la nuova pagina dettaglio entry con correzione, metadata e link contestuali piu ricchi
+- rendere persistenti o recuperabili le code di processing e rebuild oggi in-memory
 
 ## Medio
 
@@ -22,6 +22,7 @@
 - definire summary document e insight document per retrieval
 - migliorare ranking del contesto in chat
 - preparare passaggio da RDS PostgreSQL a Aurora PostgreSQL
+- arricchire ancora la pagina dettaglio entry con audit e metadata di rielaborazione
 
 ## Futuro
 

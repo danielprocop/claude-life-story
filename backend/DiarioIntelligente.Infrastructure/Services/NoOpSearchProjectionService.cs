@@ -22,6 +22,15 @@ public sealed class NoOpSearchProjectionService : ISearchProjectionService
         return Task.CompletedTask;
     }
 
+    public Task DeleteEntryAsync(Guid entryId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug(
+            "Search projection delete skipped for entry {EntryId} and user {UserId}. No search backend configured.",
+            entryId,
+            userId);
+        return Task.CompletedTask;
+    }
+
     public Task ProjectGoalItemAsync(GoalItem goalItem, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
@@ -36,6 +45,14 @@ public sealed class NoOpSearchProjectionService : ISearchProjectionService
         _logger.LogDebug(
             "Search projection delete skipped for goal item {GoalItemId} and user {UserId}. No search backend configured.",
             goalItemId,
+            userId);
+        return Task.CompletedTask;
+    }
+
+    public Task ResetUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug(
+            "Search projection reset skipped for user {UserId}. No search backend configured.",
             userId);
         return Task.CompletedTask;
     }

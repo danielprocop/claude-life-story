@@ -211,6 +211,10 @@ export class Api {
     return this.http.post<EntryResponse>(`${this.baseUrl}/entries`, { content });
   }
 
+  updateEntry(id: string, content: string): Observable<EntryResponse> {
+    return this.http.put<EntryResponse>(`${this.baseUrl}/entries/${id}`, { content });
+  }
+
   getEntries(page = 1, pageSize = 20): Observable<PaginatedResponse<EntryListResponse>> {
     return this.http.get<PaginatedResponse<EntryListResponse>>(
       `${this.baseUrl}/entries?page=${page}&pageSize=${pageSize}`
@@ -223,6 +227,10 @@ export class Api {
 
   getRelatedEntries(id: string, limit = 6): Observable<RelatedEntryResponse[]> {
     return this.http.get<RelatedEntryResponse[]>(`${this.baseUrl}/entries/${id}/related?limit=${limit}`);
+  }
+
+  deleteEntry(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/entries/${id}`);
   }
 
   getConcepts(): Observable<ConceptResponse[]> {

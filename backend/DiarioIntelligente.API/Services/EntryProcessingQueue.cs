@@ -25,4 +25,4 @@ public class EntryProcessingQueue
     }
 }
 
-public record EntryProcessingJob(Guid EntryId, Guid UserId, string Content);
+public record EntryProcessingJob(Guid EntryId, Guid UserId);

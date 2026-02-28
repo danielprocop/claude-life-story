@@ -80,6 +80,15 @@ entry + concepts + energy + goals per utente ->
 retrieval e aggregazione ->
 output narrativo e operativo
 
+## 4. Correzione memoria
+
+Modifica o cancellazione entry ->
+write canonico su PostgreSQL ->
+enqueue rebuild utente ->
+pulizia dati derivati utente ->
+replay delle entry esistenti in ordine temporale ->
+ricostruzione coerente di concepts, connections, insights, energy e future search projection
+
 ## Isolamento per utente
 
 Regola non negoziabile:
@@ -88,6 +97,7 @@ Regola non negoziabile:
 - backend risolve una identita utente interna stabile
 - ogni read e write usa quel `UserId`
 - search projection deve essere anche essa user-scoped
+- le correzioni utente devono riallineare la memoria derivata senza mescolare dati tra utenti
 
 ## Decisione su DynamoDB
 

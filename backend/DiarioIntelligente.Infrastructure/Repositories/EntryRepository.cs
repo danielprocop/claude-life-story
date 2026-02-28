@@ -26,6 +26,14 @@ public class EntryRepository : IEntryRepository
             .FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
     }
 
+    public async Task<List<Entry>> GetAllByUserAsync(Guid userId)
+    {
+        return await _db.Entries
+            .Where(e => e.UserId == userId)
+            .OrderBy(e => e.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<(List<Entry> Items, int TotalCount)> GetByUserAsync(Guid userId, int page, int pageSize)
     {
         var query = _db.Entries
@@ -40,6 +48,24 @@ public class EntryRepository : IEntryRepository
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    public async Task<Entry> UpdateAsync(Entry entry)
+    {
+        _db.Entries.Update(entry);
+        await _db.SaveChangesAsync();
+        return entry;
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, Guid userId)
+    {
+        var entry = await _db.Entries.FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
+        if (entry == null)
+            return false;
+
+        _db.Entries.Remove(entry);
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     public async Task UpdateEmbeddingAsync(Guid entryId, string embeddingVector)

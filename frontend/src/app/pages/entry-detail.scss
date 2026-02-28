@@ -34,10 +34,61 @@
 .entry-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
   gap: 16px;
   margin-bottom: 20px;
   color: #667789;
   font-size: 13px;
+}
+
+.entry-actions,
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primary-button,
+.secondary-button,
+.danger-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: #9f4a20;
+  color: #fff;
+}
+
+.secondary-button {
+  background: #f5f8fb;
+  color: #22303b;
+  border: 1px solid #d8e1e8;
+}
+
+.danger-button {
+  background: #fff2f2;
+  color: #b42318;
+  border: 1px solid #f3b8b8;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.danger-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.status-banner {
+  margin-bottom: 18px;
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: #fff6eb;
+  border: 1px solid #f3d2b3;
+  color: #8a4b15;
 }
 
 .entry-content {
@@ -45,6 +96,34 @@
   line-height: 1.8;
   color: #22303b;
   font-size: 16px;
+}
+
+.editor-section {
+  display: grid;
+  gap: 12px;
+}
+
+.editor-label {
+  font-weight: 700;
+  color: #22303b;
+}
+
+.editor-input {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid #d8e1e8;
+  padding: 16px 18px;
+  font: inherit;
+  line-height: 1.7;
+  color: #22303b;
+  background: #fcfdfe;
+  resize: vertical;
+}
+
+.editor-note,
+.empty-state {
+  color: #5b6c7d;
+  line-height: 1.6;
 }
 
 .concepts-section {

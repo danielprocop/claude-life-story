@@ -63,6 +63,8 @@ Ogni retrieval per agenti o review deve filtrare per `UserId` prima di applicare
 ## Stato attuale
 
 Il backend ha gia il contesto utente Cognito -> `UserId` interno.
+La modifica o cancellazione di una entry ora forza anche un rebuild user-scoped della memoria derivata.
+Il seed demo viene creato solo in ambienti senza Cognito configurato.
 
 Serve ancora:
 

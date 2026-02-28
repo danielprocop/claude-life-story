@@ -2,6 +2,10 @@
   <h2 class="page-title">Timeline</h2>
   <p class="page-subtitle">Le tue entry in ordine cronologico</p>
 
+  @if (notice()) {
+    <div class="notice-banner">{{ notice() }}</div>
+  }
+
   @if (loading()) {
     <div class="loading">Caricamento...</div>
   } @else if (entries().length === 0) {

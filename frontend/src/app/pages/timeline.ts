@@ -1,6 +1,6 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Api, EntryListResponse } from '../services/api';
 
 @Component({
@@ -10,14 +10,18 @@ import { Api, EntryListResponse } from '../services/api';
   styleUrl: './timeline.scss',
 })
 export class Timeline implements OnInit {
+  private readonly router = inject(Router);
   entries = signal<EntryListResponse[]>([]);
   loading = signal(true);
   page = signal(1);
   totalCount = signal(0);
+  notice = signal('');
 
   constructor(private api: Api) {}
 
   ngOnInit() {
+    const notice = this.router.getCurrentNavigation()?.extras.state?.['notice'] as string | undefined;
+    if (notice) this.notice.set(notice);
     this.loadEntries();
   }
 

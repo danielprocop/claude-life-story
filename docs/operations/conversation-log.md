@@ -54,3 +54,12 @@ Questa conversazione ha consolidato la direzione del progetto.
 - le review ora espongono anche le entry sorgente usate come base, per aumentare verificabilita e fiducia nell'output AI
 - e stata aggiunta una pagina dettaglio entry e la navigazione dalle fonti di chat, review, timeline e ricerca verso la singola entry
 - la pagina dettaglio entry ora mostra anche entry correlate basate su concetti condivisi, rafforzando il comportamento di memoria connessa
+
+### Aggiornamento successivo
+
+- le entry ora supportano modifica e cancellazione via API e frontend
+- quando una entry cambia o viene eliminata, il sistema mette in coda un rebuild user-scoped della memoria derivata
+- il rebuild cancella e ricostruisce concepts, connections, insights, energy logs ed embedding per il solo utente coinvolto
+- il dettaglio entry ora espone azioni di modifica ed eliminazione con messaggio esplicito di ricalcolo in background
+- il seed dell'utente demo viene creato solo in ambienti senza Cognito configurato
+- rischio residuo esplicitato: le code di processing e rebuild sono ancora in-memory e vanno rese persistenti o recuperabili

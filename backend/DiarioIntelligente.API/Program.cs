@@ -32,7 +32,9 @@ builder.Services.AddAiServices(builder.Configuration);
 
 // Background processing queue
 builder.Services.AddSingleton<EntryProcessingQueue>();
+builder.Services.AddSingleton<UserMemoryRebuildQueue>();
 builder.Services.AddHostedService<EntryProcessingService>();
+builder.Services.AddHostedService<UserMemoryRebuildService>();
 builder.Services.AddScoped<CurrentUserService>();
 
 // Cognito JWT Authentication
@@ -75,13 +77,14 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Auto-create database and seed demo user
+// Auto-create database and seed demo user only for non-Cognito environments
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.EnsureCreatedAsync();
 
-    if (!await db.Users.AnyAsync(u => u.Id == Guid.Parse("00000000-0000-0000-0000-000000000001")))
+    if (string.IsNullOrEmpty(cognitoUserPoolId) &&
+        !await db.Users.AnyAsync(u => u.Id == Guid.Parse("00000000-0000-0000-0000-000000000001")))
     {
         db.Users.Add(new DiarioIntelligente.Core.Models.User
         {
