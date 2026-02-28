@@ -86,3 +86,10 @@ Questa conversazione ha consolidato la direzione del progetto.
 - e stata aggiunta una `Node View` server-side user-scoped per persona ed evento
 - e stato creato `docs/cognitive-graph.md` come documento di riferimento del nuovo modello
 - l'utente ha confermato che in questa fase non serve preservare i dati attuali: rollout e reset pulito sono accettabili
+
+### Aggiornamento successivo
+
+- verifica AWS fatta dopo il refactor cognitivo
+- nell'account non risultano domini OpenSearch classici attivi
+- OpenSearch Serverless non e attualmente raggiungibile da questa macchina
+- conseguenza operativa: il nuovo layer `EntityCard` e pronto lato dominio, ma il wiring reale del retrieval richiede prima una risorsa OpenSearch disponibile

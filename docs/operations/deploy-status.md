@@ -16,6 +16,7 @@ Date: 2026-02-28
 - Frontend job failed
 - The release path will be simplified: GitHub Actions for backend, Amplify native CI/CD for frontend
 - Amplify app is still not repository-connected at app level: `enableBranchAutoBuild=false` on app and no repository metadata on `get-app`
+- as of 2026-02-28, no classic OpenSearch domains are present in the AWS account, and OpenSearch Serverless is not currently reachable from this environment
 
 ## What Happens On Push
 
@@ -27,6 +28,7 @@ At the moment of this note:
 - frontend deploy is expected to be handled by Amplify branch auto build
 - AWS roles and trust configuration are already prepared
 - current blocker: frontend auto-build is not truly active until repo/webhook connection is fixed in Amplify
+- current blocker for semantic retrieval rollout: there is no reachable OpenSearch resource to wire the new `EntityCard` projection against
 
 ## Backend Deploy Path
 
