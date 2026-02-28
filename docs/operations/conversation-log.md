@@ -34,3 +34,12 @@ Questa conversazione ha consolidato la direzione del progetto.
 - consolidare la documentazione viva del progetto
 - completare la stabilizzazione multiutente
 - preparare il sistema per Aurora PostgreSQL e OpenSearch
+
+### Aggiornamento successivo nella stessa giornata
+
+- il workflow GitHub `Deploy to AWS` e stato confermato presente su `main`
+- GitHub Actions ha eseguito il run per il commit `d36609e`
+- il job backend e riuscito
+- il job frontend e fallito
+- decisione operativa: GitHub Actions per backend, Amplify native CI/CD per frontend
+- la documentazione e stata estesa con modello di isolamento utente, piano search/indexing e runbook di rilascio

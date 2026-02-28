@@ -11,6 +11,10 @@ Date: 2026-02-28
 - App Runner runtime secrets now come from SSM Parameter Store
 - Manual frontend deploy completed successfully on 2026-02-28
 - Backend health endpoint is responding successfully after the latest deploy cycle
+- Workflow `Deploy to AWS #1` for commit `d36609e` ran on GitHub Actions on 2026-02-28
+- Backend job succeeded
+- Frontend job failed
+- The release path will be simplified: GitHub Actions for backend, Amplify native CI/CD for frontend
 
 ## What Happens On Push
 
@@ -18,9 +22,9 @@ Automatic deployment on `push` to `main` works only after the workflow file is c
 
 At the moment of this note:
 
-- the workflow exists locally
+- backend deploy is handled by GitHub Actions
+- frontend deploy is expected to be handled by Amplify branch auto build
 - AWS roles and trust configuration are already prepared
-- once these changes are pushed, GitHub Actions can deploy without static AWS keys
 
 ## Backend Deploy Path
 
@@ -30,9 +34,9 @@ At the moment of this note:
 
 ## Frontend Deploy Path
 
-- build Angular production bundle
-- upload artifact to Amplify
-- start Amplify deployment for `main`
+- push on the repository branch connected to Amplify
+- Amplify builds the frontend
+- Amplify deploys branch `main`
 
 ## Security Notes
 

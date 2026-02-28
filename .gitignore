@@ -14,3 +14,11 @@ backend/DiarioIntelligente.API/appsettings.Development.json
 # sqlite transient files
 *.db-wal
 *.db-shm
+
+# frontend build artifacts and manual deploy archives
+frontend/dist/
+frontend/*.zip
+*.zip
+
+# node modules
+frontend/node_modules/

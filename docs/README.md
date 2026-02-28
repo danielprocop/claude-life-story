@@ -12,9 +12,14 @@ Questa cartella e la fonte principale per:
 
 - [Product Vision](e:/development/personal/claude-life-story/docs/product/vision.md)
 - [Product Roadmap](e:/development/personal/claude-life-story/docs/product/roadmap.md)
+- [Product Backlog](e:/development/personal/claude-life-story/docs/product/backlog.md)
 - [System Overview](e:/development/personal/claude-life-story/docs/architecture/system-overview.md)
+- [User Isolation Model](e:/development/personal/claude-life-story/docs/architecture/user-isolation-model.md)
+- [Search And Indexing Plan](e:/development/personal/claude-life-story/docs/architecture/search-and-indexing-plan.md)
+- [Aurora And OpenSearch Migration Plan](e:/development/personal/claude-life-story/docs/architecture/aurora-opensearch-migration-plan.md)
 - [Data Platform Decision](e:/development/personal/claude-life-story/docs/architecture/data-platform-decision.md)
 - [Deploy Status](e:/development/personal/claude-life-story/docs/operations/deploy-status.md)
+- [Release Runbook](e:/development/personal/claude-life-story/docs/operations/release-runbook.md)
 - [Documentation Process](e:/development/personal/claude-life-story/docs/operations/documentation-process.md)
 - [Conversation Log](e:/development/personal/claude-life-story/docs/operations/conversation-log.md)
 

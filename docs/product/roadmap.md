@@ -29,6 +29,8 @@ Gia presenti o impostati:
 - definire modello di proiezione verso OpenSearch
 - identificare i documenti da indicizzare: entry, concepts, goals, insights, summaries
 - definire chiavi e campi di retrieval per user-scoped search
+- definire strategia di reindex e backfill
+- definire job di projection affidabili
 
 ## Fase 3. Search e AI retrieval
 
