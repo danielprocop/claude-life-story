@@ -35,6 +35,7 @@ builder.Services.AddSingleton<EntryProcessingQueue>();
 builder.Services.AddSingleton<UserMemoryRebuildQueue>();
 builder.Services.AddHostedService<EntryProcessingService>();
 builder.Services.AddHostedService<UserMemoryRebuildService>();
+builder.Services.AddHostedService<EntryProcessingRecoveryService>();
 builder.Services.AddScoped<CurrentUserService>();
 
 // Cognito JWT Authentication

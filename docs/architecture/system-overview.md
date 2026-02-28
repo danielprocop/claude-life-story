@@ -89,6 +89,13 @@ pulizia dati derivati utente ->
 replay delle entry esistenti in ordine temporale ->
 ricostruzione coerente di concepts, connections, insights, energy e future search projection
 
+## 5. Recovery operativo
+
+Riavvio container o deploy ->
+scan degli entry job mancanti e dei rebuild utente incompleti ->
+re-enqueue in memoria ->
+ripresa della pipeline AI senza perdere allineamento sul source of truth
+
 ## Isolamento per utente
 
 Regola non negoziabile:
@@ -98,6 +105,7 @@ Regola non negoziabile:
 - ogni read e write usa quel `UserId`
 - search projection deve essere anche essa user-scoped
 - le correzioni utente devono riallineare la memoria derivata senza mescolare dati tra utenti
+- i restart applicativi non devono lasciare entry o rebuild silenziosamente non processati
 
 ## Decisione su DynamoDB
 

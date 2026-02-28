@@ -14,7 +14,7 @@
 - migliorare il modello goal -> micro-step
 - definire read model per search e retrieval
 - evolvere la nuova ricerca globale applicativa in retrieval serio con ranking e filtri
-- rendere persistenti o recuperabili le code di processing e rebuild oggi in-memory
+- rendere persistenti le code di processing e rebuild oggi solo recuperabili via startup scan
 
 ## Medio
 

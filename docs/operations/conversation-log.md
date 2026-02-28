@@ -63,3 +63,9 @@ Questa conversazione ha consolidato la direzione del progetto.
 - il dettaglio entry ora espone azioni di modifica ed eliminazione con messaggio esplicito di ricalcolo in background
 - il seed dell'utente demo viene creato solo in ambienti senza Cognito configurato
 - rischio residuo esplicitato: le code di processing e rebuild sono ancora in-memory e vanno rese persistenti o recuperabili
+
+### Aggiornamento successivo
+
+- all'avvio dell'API ora viene eseguito uno startup recovery dei job persi in memoria
+- il recovery ricostruisce sia entry processing non completati sia rebuild utente rimasti sospesi dopo restart o deploy
+- il rischio residuo si riduce ma non e chiuso: le code non sono ancora persistenti, sono solo recuperabili dal source of truth
