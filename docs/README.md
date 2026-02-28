@@ -21,6 +21,7 @@ Questa cartella e la fonte principale per:
 - [Data Platform Decision](e:/development/personal/claude-life-story/docs/architecture/data-platform-decision.md)
 - [Deploy Status](e:/development/personal/claude-life-story/docs/operations/deploy-status.md)
 - [Release Runbook](e:/development/personal/claude-life-story/docs/operations/release-runbook.md)
+- [OpenSearch Provisioning](e:/development/personal/claude-life-story/docs/operations/opensearch-provisioning.md)
 - [Documentation Process](e:/development/personal/claude-life-story/docs/operations/documentation-process.md)
 - [Conversation Log](e:/development/personal/claude-life-story/docs/operations/conversation-log.md)
 

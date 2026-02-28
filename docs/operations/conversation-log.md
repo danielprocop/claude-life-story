@@ -93,3 +93,11 @@ Questa conversazione ha consolidato la direzione del progetto.
 - nell'account non risultano domini OpenSearch classici attivi
 - OpenSearch Serverless non e attualmente raggiungibile da questa macchina
 - conseguenza operativa: il nuovo layer `EntityCard` e pronto lato dominio, ma il wiring reale del retrieval richiede prima una risorsa OpenSearch disponibile
+
+### Aggiornamento successivo
+
+- richiesto fix definitivo per rilascio frontend e indicazioni concrete per risorsa OpenSearch
+- pipeline GitHub Actions aggiornata: frontend ora viene buildato, zippato e pubblicato su Amplify via `create-deployment` + upload + `start-deployment`
+- validazione fatta end-to-end con job Amplify `4` in stato `SUCCEED`
+- repo connection Amplify resta assente ma non blocca piu il rilascio
+- aggiunto documento operativo `docs/operations/opensearch-provisioning.md` con comando CLI minimo per creare il primo domain OpenSearch in `eu-west-1`

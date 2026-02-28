@@ -11,7 +11,7 @@ Il trigger atteso e:
 - commit
 - push su `main`
 - GitHub Actions per backend
-- Amplify native CI/CD per frontend
+- GitHub Actions per frontend + deploy manuale Amplify via API
 - deploy backend
 - deploy frontend
 
@@ -24,10 +24,12 @@ Il trigger atteso e:
 
 ## Frontend release path
 
-1. push sul branch collegato ad Amplify
-2. Amplify avvia build e deploy
-3. verificare il job del branch `main`
-4. verifica deploy `SUCCEED`
+1. build frontend in GitHub Actions
+2. creare zip da `frontend/dist/frontend/browser`
+3. chiamare `amplify create-deployment` su app e branch
+4. caricare zip su `zipUploadUrl`
+5. chiamare `amplify start-deployment` con `jobId`
+6. verificare `get-job` in stato `SUCCEED`
 
 ## Prerequisiti
 
@@ -62,9 +64,11 @@ Il trigger atteso e:
 
 ## Cosa fare se Amplify non aggiorna
 
-- verificare il job branch `main`
-- verificare la connessione repo -> Amplify
-- verificare che branch auto build sia abilitato
+- verificare nel run GitHub Actions i passaggi `create-deployment`, upload zip e `start-deployment`
+- verificare lo stato del job con `aws amplify get-job --app-id ... --branch-name main --job-id ...`
+- verificare che lo zip caricato contenga i file statici nella root (`index.html`, js, css)
+- verificare il ruolo OIDC usato dal workflow per chiamare Amplify APIs
+- nota: la repo connection Amplify non e necessaria nel percorso attuale
 
 ## Sicurezza release
 

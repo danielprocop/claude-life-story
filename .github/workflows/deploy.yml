@@ -13,6 +13,8 @@ env:
   ECR_REPOSITORY: diario-intelligente
   APP_RUNNER_ARN: arn:aws:apprunner:eu-west-1:388592345191:service/diario-intelligente-api/d2d1e2761672485db4a74787a791c05c
   DEPLOY_ROLE_ARN: arn:aws:iam::388592345191:role/GitHubActionsDiarioDeployRole
+  AMPLIFY_APP_ID: d35nn0pbd8bxxa
+  AMPLIFY_BRANCH: main
 
 jobs:
   deploy-backend:
@@ -43,3 +45,74 @@ jobs:
       - name: Deploy to App Runner
         run: |
           aws apprunner start-deployment --service-arn ${{ env.APP_RUNNER_ARN }}
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Package frontend artifact
+        run: |
+          cd frontend/dist/frontend/browser
+          zip -r "$RUNNER_TEMP/frontend-amplify.zip" .
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE_ARN }}
+          role-session-name: github-actions-diario-frontend-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Create Amplify deployment
+        id: amplify-create
+        run: |
+          read -r JOB_ID UPLOAD_URL < <(aws amplify create-deployment --app-id "${{ env.AMPLIFY_APP_ID }}" --branch-name "${{ env.AMPLIFY_BRANCH }}" --query '[jobId,zipUploadUrl]' --output text)
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "upload_url=$UPLOAD_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Upload frontend artifact to Amplify
+        run: |
+          curl --fail --silent --show-error --upload-file "$RUNNER_TEMP/frontend-amplify.zip" "${{ steps.amplify-create.outputs.upload_url }}"
+
+      - name: Start Amplify deployment
+        run: |
+          aws amplify start-deployment --app-id "${{ env.AMPLIFY_APP_ID }}" --branch-name "${{ env.AMPLIFY_BRANCH }}" --job-id "${{ steps.amplify-create.outputs.job_id }}"
+
+      - name: Wait for Amplify deployment
+        run: |
+          for attempt in {1..60}; do
+            STATUS=$(aws amplify get-job --app-id "${{ env.AMPLIFY_APP_ID }}" --branch-name "${{ env.AMPLIFY_BRANCH }}" --job-id "${{ steps.amplify-create.outputs.job_id }}" --query 'job.summary.status' --output text)
+            echo "Amplify deployment status: $STATUS"
+
+            case "$STATUS" in
+              SUCCEED)
+                exit 0
+                ;;
+              FAILED|CANCELLED)
+                aws amplify get-job --app-id "${{ env.AMPLIFY_APP_ID }}" --branch-name "${{ env.AMPLIFY_BRANCH }}" --job-id "${{ steps.amplify-create.outputs.job_id }}" --output json
+                exit 1
+                ;;
+            esac
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for Amplify deployment."
+          aws amplify get-job --app-id "${{ env.AMPLIFY_APP_ID }}" --branch-name "${{ env.AMPLIFY_BRANCH }}" --job-id "${{ steps.amplify-create.outputs.job_id }}" --output json
+          exit 1
