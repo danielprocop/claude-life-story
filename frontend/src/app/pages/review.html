@@ -81,6 +81,20 @@
         </div>
       }
 
+      @if (r.sources.length > 0) {
+        <div class="review-section">
+          <h3>Fonti usate</h3>
+          <div class="sources">
+            @for (source of r.sources; track source.entryId) {
+              <article class="source-card">
+                <p class="source-date">{{ source.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+                <p class="source-preview">{{ source.preview }}</p>
+              </article>
+            }
+          </div>
+        </div>
+      }
+
       <div class="review-footer">
         Generata il {{ r.generatedAt | date:'dd/MM/yyyy HH:mm' }}
       </div>

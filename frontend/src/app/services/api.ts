@@ -152,6 +152,13 @@ export interface ReviewResponse {
   patterns: string[];
   suggestions: string[];
   generatedAt: string;
+  sources: ReviewSourceEntry[];
+}
+
+export interface ReviewSourceEntry {
+  entryId: string;
+  createdAt: string;
+  preview: string;
 }
 
 export interface SearchResponse {

@@ -9,7 +9,7 @@
 
 ## Alto
 
-- introdurre source citations per review e risposte AI
+- introdurre source citations anche per risposte chat AI, non solo per review
 - aggiungere audit delle correzioni utente
 - migliorare il modello goal -> micro-step
 - definire read model per search e retrieval

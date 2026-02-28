@@ -39,7 +39,7 @@ public class NoOpAiService : IAiService
         return Task.FromResult(new ReviewResponse(
             "AI non configurata", period,
             new List<string>(), new List<string>(), new List<string>(),
-            new List<string>(), new List<string>(), DateTime.UtcNow));
+            new List<string>(), new List<string>(), DateTime.UtcNow, new List<ReviewSourceEntry>()));
     }
 
     public Task<List<string>> DetectPatternsAsync(string entriesContent, string energyData, string conceptsData)

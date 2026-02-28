@@ -231,7 +231,8 @@ Restituisci SOLO un JSON valido con questa struttura:
                 parsed.GetProperty("challenges").EnumerateArray().Select(x => x.GetString() ?? "").ToList(),
                 parsed.GetProperty("patterns").EnumerateArray().Select(x => x.GetString() ?? "").ToList(),
                 parsed.GetProperty("suggestions").EnumerateArray().Select(x => x.GetString() ?? "").ToList(),
-                DateTime.UtcNow
+                DateTime.UtcNow,
+                new List<ReviewSourceEntry>()
             );
         }
         catch (Exception ex)

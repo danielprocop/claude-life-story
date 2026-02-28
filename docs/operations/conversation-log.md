@@ -51,3 +51,4 @@ Questa conversazione ha consolidato la direzione del progetto.
 - il backend ora espone una astrazione `ISearchProjectionService`
 - l'implementazione attuale e `NoOp`, per preparare l'integrazione futura con OpenSearch senza cambiare i flussi applicativi
 - e stata aggiunta una ricerca globale per utente su entry, concetti e goal come fallback applicativo prima di OpenSearch
+- le review ora espongono anche le entry sorgente usate come base, per aumentare verificabilita e fiducia nell'output AI

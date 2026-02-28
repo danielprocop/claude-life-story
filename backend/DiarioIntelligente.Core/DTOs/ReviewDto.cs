@@ -8,5 +8,12 @@ public record ReviewResponse(
     List<string> Challenges,
     List<string> Patterns,
     List<string> Suggestions,
-    DateTime GeneratedAt
+    DateTime GeneratedAt,
+    List<ReviewSourceEntry> Sources
+);
+
+public record ReviewSourceEntry(
+    Guid EntryId,
+    DateTime CreatedAt,
+    string Preview
 );
