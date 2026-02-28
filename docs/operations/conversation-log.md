@@ -101,3 +101,10 @@ Questa conversazione ha consolidato la direzione del progetto.
 - validazione fatta end-to-end con job Amplify `4` in stato `SUCCEED`
 - repo connection Amplify resta assente ma non blocca piu il rilascio
 - aggiunto documento operativo `docs/operations/opensearch-provisioning.md` con comando CLI minimo per creare il primo domain OpenSearch in `eu-west-1`
+
+### Aggiornamento successivo
+
+- push del fix workflow: run GitHub `#12` ha mostrato failure frontend al passo `CreateDeployment`
+- root cause confermata da CloudTrail: AccessDenied su resource Amplify `.../branches/main/deployments/*`
+- aggiornato il ruolo `GitHubActionsDiarioDeployRole` con permessi su `deployments/*` e `jobs/*`, inclusi `amplify:GetJob` e `amplify:ListJobs`
+- previsto nuovo push per verificare il rilascio completo backend + frontend in un unico workflow

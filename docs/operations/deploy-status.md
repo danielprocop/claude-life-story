@@ -18,6 +18,8 @@ Date: 2026-02-28
 - Amplify app is still not repository-connected at app level: `enableBranchAutoBuild=false` on app and no repository metadata on `get-app`
 - This is no longer a blocker because frontend release now uses Amplify manual deployment APIs from GitHub Actions
 - Frontend manual API path was validated end-to-end with Amplify job `4` status `SUCCEED` on 2026-02-28
+- Workflow run `#12` (commit `89021c0`) failed on frontend at `CreateDeployment` because IAM policy did not include Amplify deployment resource path
+- IAM fix applied: role `GitHubActionsDiarioDeployRole` now includes `.../branches/main/deployments/*` and `.../branches/main/jobs/*` with `CreateDeployment`, `StartDeployment`, `GetJob`, `ListJobs`
 - as of 2026-02-28, no classic OpenSearch domains are present in the AWS account, and OpenSearch Serverless is not currently reachable from this environment
 
 ## What Happens On Push

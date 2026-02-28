@@ -38,6 +38,10 @@ Il trigger atteso e:
 - ECR raggiungibile
 - App Runner configurato con ruolo corretto
 - Amplify app e branch esistenti
+- la policy IAM del ruolo OIDC deve includere Amplify su `apps/<appId>`
+- la policy IAM del ruolo OIDC deve includere Amplify su `apps/<appId>/branches/<branch>`
+- la policy IAM del ruolo OIDC deve includere Amplify su `apps/<appId>/branches/<branch>/deployments/*`
+- la policy IAM del ruolo OIDC deve includere Amplify su `apps/<appId>/branches/<branch>/jobs/*`
 
 ## Controlli post-release
 
