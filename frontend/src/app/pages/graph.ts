@@ -47,4 +47,21 @@ export class Graph implements OnInit {
     }
     return map;
   }
+
+  colorForKind(kind: string): string {
+    const palette: Record<string, string> = {
+      person: '#E8F2FF',
+      place: '#E9FFF1',
+      goal: '#FFF4E8',
+      project: '#F3EEFF',
+      activity: '#FFFBE8',
+      idea: '#E8FBFF',
+      emotion: '#FFEAF0',
+      problem: '#FFEFEF',
+      finance: '#EEFFF8',
+      event: '#F2F4F8'
+    };
+
+    return palette[kind.toLowerCase()] ?? '#F4F7FA';
+  }
 }

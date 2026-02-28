@@ -43,7 +43,7 @@
     <section class="node-grid">
       @for (node of response()!.items; track node.id) {
         <article class="node-card">
-          <p class="pill">{{ node.kind }}</p>
+          <p class="pill" [style.background]="colorForKind(node.kind)">{{ node.kind }}</p>
           <h3>{{ node.canonicalName }}</h3>
           @if (node.anchorKey) {
             <p class="meta">Anchor: {{ node.anchorKey }}</p>

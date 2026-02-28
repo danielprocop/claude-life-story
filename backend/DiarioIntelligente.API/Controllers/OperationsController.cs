@@ -1,3 +1,4 @@
+using DiarioIntelligente.API.Services;
 using DiarioIntelligente.Core.Interfaces;
 using DiarioIntelligente.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +12,16 @@ public class OperationsController : AuthenticatedController
 {
     private readonly AppDbContext _db;
     private readonly ISearchProjectionService _searchProjectionService;
+    private readonly UserMemoryRebuildQueue _rebuildQueue;
 
-    public OperationsController(AppDbContext db, ISearchProjectionService searchProjectionService)
+    public OperationsController(
+        AppDbContext db,
+        ISearchProjectionService searchProjectionService,
+        UserMemoryRebuildQueue rebuildQueue)
     {
         _db = db;
         _searchProjectionService = searchProjectionService;
+        _rebuildQueue = rebuildQueue;
     }
 
     [HttpPost("reindex/entities")]
@@ -33,5 +39,13 @@ public class OperationsController : AuthenticatedController
             await _searchProjectionService.ProjectEntityAsync(entity, HttpContext.RequestAborted);
 
         return Ok(new { reindexed = entities.Count });
+    }
+
+    [HttpPost("rebuild/memory")]
+    public async Task<ActionResult> RebuildMemory()
+    {
+        var userId = GetUserId();
+        await _rebuildQueue.EnqueueAsync(userId, HttpContext.RequestAborted);
+        return Accepted(new { queued = true, userId });
     }
 }

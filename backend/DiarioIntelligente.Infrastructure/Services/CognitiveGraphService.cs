@@ -31,6 +31,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         new(@"\b(?<name>[A-ZÀ-Ý][a-zà-ÿ'’\-]{2,})\b", RegexOptions.Compiled);
     private static readonly Regex SentenceStartTokenRegex =
         new(@"^\s*(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]{2,})\b", RegexOptions.Compiled);
+    private static readonly Regex PlaceAfterPrepositionRegex =
+        new(@"\b(?:a|in|da|al|alla|nel|nella|sul|sulla|presso)\s+(?<place>[A-ZÀ-Ý][A-Za-zÀ-ÿ'’\-]{2,})\b", RegexOptions.Compiled);
     private static readonly Regex AmountRegex =
         new(@"(?<amount>\d+(?:[.,]\d+)?)\s*(?:euro|€)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -110,6 +112,14 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             resolvedNameMentions[personName] = entity;
             MarkChanged(entity, changedEntities);
         }
+
+        await UpsertNonPersonConceptEntitiesAsync(
+            entry.UserId,
+            entry,
+            analysis,
+            entities,
+            changedEntities,
+            cancellationToken);
 
         var eventSignal = ExtractEventSignal(entry.Content, entry.CreatedAt, analysis, resolvedNameMentions, roleContext);
         if (eventSignal != null)
@@ -707,6 +717,181 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         return created;
     }
 
+    private async Task UpsertNonPersonConceptEntitiesAsync(
+        Guid userId,
+        Entry entry,
+        AiAnalysisResult analysis,
+        List<CanonicalEntity> entities,
+        List<CanonicalEntity> changedEntities,
+        CancellationToken cancellationToken)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var concept in analysis.Concepts)
+        {
+            if (string.IsNullOrWhiteSpace(concept.Label))
+                continue;
+
+            var kind = MapConceptTypeToEntityKind(concept.Type);
+            if (string.Equals(kind, "person", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var key = $"{kind}:{concept.Label.Trim()}";
+            if (!seen.Add(key))
+                continue;
+
+            var entity = await ResolveOrCreateEntityByKindAsync(
+                userId,
+                concept.Label.Trim(),
+                kind,
+                entry,
+                entities,
+                cancellationToken);
+
+            if (string.IsNullOrWhiteSpace(entity.Description))
+                entity.Description = $"Concept type: {concept.Type.ToLowerInvariant()}";
+
+            AddEvidenceIfMissing(
+                entity,
+                entry,
+                "concept_mention",
+                concept.Label.Trim(),
+                "concept_type",
+                concept.Type.ToLowerInvariant(),
+                "ai_concept",
+                0.86f);
+
+            MarkChanged(entity, changedEntities);
+        }
+
+        foreach (var goalSignal in analysis.GoalSignals)
+        {
+            if (string.IsNullOrWhiteSpace(goalSignal.Text))
+                continue;
+
+            var kind = MapConceptTypeToEntityKind(goalSignal.Type);
+            if (string.Equals(kind, "person", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var key = $"{kind}:{goalSignal.Text.Trim()}";
+            if (!seen.Add(key))
+                continue;
+
+            var entity = await ResolveOrCreateEntityByKindAsync(
+                userId,
+                goalSignal.Text.Trim(),
+                kind,
+                entry,
+                entities,
+                cancellationToken);
+
+            AddEvidenceIfMissing(
+                entity,
+                entry,
+                "goal_signal",
+                goalSignal.Text.Trim(),
+                "signal_type",
+                goalSignal.Type.ToLowerInvariant(),
+                "goal_signal",
+                0.88f);
+
+            MarkChanged(entity, changedEntities);
+        }
+
+        foreach (var place in ExtractStandalonePlaceMentions(entry.Content))
+        {
+            var key = $"place:{place}";
+            if (!seen.Add(key))
+                continue;
+
+            var entity = await ResolveOrCreateEntityByKindAsync(
+                userId,
+                place,
+                "place",
+                entry,
+                entities,
+                cancellationToken);
+
+            AddEvidenceIfMissing(
+                entity,
+                entry,
+                "place_mention",
+                place,
+                "kind",
+                "place",
+                "heuristic_place",
+                0.74f);
+
+            MarkChanged(entity, changedEntities);
+        }
+    }
+
+    private async Task<CanonicalEntity> ResolveOrCreateEntityByKindAsync(
+        Guid userId,
+        string rawName,
+        string kind,
+        Entry entry,
+        List<CanonicalEntity> entities,
+        CancellationToken cancellationToken)
+    {
+        var normalized = Normalize(rawName);
+        if (string.IsNullOrWhiteSpace(normalized))
+            throw new InvalidOperationException("Cannot resolve empty entity name.");
+
+        var exact = entities
+            .Where(x => string.Equals(x.Kind, kind, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(x =>
+                x.NormalizedCanonicalName == normalized ||
+                x.Aliases.Any(alias => alias.NormalizedAlias == normalized));
+
+        if (exact != null)
+        {
+            AddAliasIfMissing(exact, rawName, "observed_name", 0.95f);
+            AddEvidenceIfMissing(exact, entry, "mention", rawName, "mention", rawName, "exact_alias", 0.95f);
+            return exact;
+        }
+
+        var retrievalCandidates = await _entityRetrievalService.SearchEntityCandidatesAsync(userId, rawName, 6, cancellationToken);
+        if (retrievalCandidates.Count > 0)
+        {
+            var retrieved = entities
+                .Where(x => string.Equals(x.Kind, kind, StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(x => retrievalCandidates.Any(candidate => candidate.EntityId == x.Id));
+
+            if (retrieved != null)
+            {
+                AddAliasIfMissing(retrieved, rawName, "observed_name", 0.9f);
+                AddEvidenceIfMissing(retrieved, entry, "merge", rawName, "alias", rawName, "search_candidate", 0.9f);
+                return retrieved;
+            }
+        }
+
+        var fuzzy = entities
+            .Where(x => string.Equals(x.Kind, kind, StringComparison.OrdinalIgnoreCase))
+            .Select(x => new
+            {
+                Entity = x,
+                Score = Math.Max(
+                    JaroWinklerSimilarity(normalized, x.NormalizedCanonicalName),
+                    x.Aliases.Select(alias => JaroWinklerSimilarity(normalized, alias.NormalizedAlias)).DefaultIfEmpty(0).Max())
+            })
+            .Where(x => x.Score >= 0.92)
+            .OrderByDescending(x => x.Score)
+            .FirstOrDefault();
+
+        if (fuzzy != null)
+        {
+            AddAliasIfMissing(fuzzy.Entity, rawName, "observed_typo", 0.88f);
+            AddEvidenceIfMissing(fuzzy.Entity, entry, "merge", rawName, "alias", rawName, "fuzzy_alias", (float)fuzzy.Score);
+            return fuzzy.Entity;
+        }
+
+        var created = await CreateEntityAsync(userId, kind, ToDisplayName(rawName), null, entities, cancellationToken);
+        AddAliasIfMissing(created, rawName, "canonical_name", 1.0f);
+        AddEvidenceIfMissing(created, entry, "mention", rawName, "canonical_name", rawName, "new_entity", 0.8f);
+        return created;
+    }
+
     private async Task<CanonicalEntity> GetOrCreateAnchorEntityAsync(
         Guid userId,
         string anchorKey,
@@ -1197,6 +1382,71 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             return true;
 
         return entity.Aliases.Any(alias => alias.NormalizedAlias == normalized);
+    }
+
+    private static IEnumerable<string> ExtractStandalonePlaceMentions(string content)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match match in PlaceAfterPrepositionRegex.Matches(content))
+        {
+            var token = match.Groups["place"].Value.Trim();
+            if (token.Length < 3 || IsCommonNonNameToken(token))
+                continue;
+
+            if (seen.Add(token))
+                yield return token;
+        }
+    }
+
+    private static string MapConceptTypeToEntityKind(string rawType)
+    {
+        if (string.IsNullOrWhiteSpace(rawType))
+            return "generic";
+
+        var normalized = Normalize(rawType);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return "generic";
+
+        return normalized switch
+        {
+            "person" => "person",
+            "place" or "location" or "city" or "country" => "place",
+            "goal" or "desire" or "objective" => "goal",
+            "project" => "project",
+            "activity" or "task" or "habit" => "activity",
+            "emotion" or "feeling" => "emotion",
+            "idea" or "belief" or "question" or "philosophy" => "idea",
+            "problem" or "blocker" => "problem",
+            "money" or "finance" => "finance",
+            _ => ToKindToken(rawType)
+        };
+    }
+
+    private static string ToKindToken(string input)
+    {
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder();
+        foreach (var c in normalized)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category == UnicodeCategory.NonSpacingMark)
+                continue;
+
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(char.ToLowerInvariant(c));
+                continue;
+            }
+
+            if (builder.Length > 0 && builder[^1] != '_')
+                builder.Append('_');
+        }
+
+        var token = builder.ToString().Trim('_');
+        if (string.IsNullOrWhiteSpace(token))
+            return "generic";
+
+        return token.Length > 40 ? token[..40] : token;
     }
 
     private static SettlementSummaryResponse MapSettlement(Settlement settlement)

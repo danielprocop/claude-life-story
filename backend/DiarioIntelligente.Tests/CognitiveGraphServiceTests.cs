@@ -213,6 +213,35 @@ public class CognitiveGraphServiceTests
         Assert.Equal(byRole.Items[0].Id, byAlias.Items[0].Id);
     }
 
+    [Fact]
+    public async Task Creates_Varied_Node_Types_From_Concepts_And_Places()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        var analysis = new AiAnalysisResult
+        {
+            Concepts =
+            [
+                new ExtractedConcept { Label = "Milano", Type = "place" },
+                new ExtractedConcept { Label = "Atlas", Type = "project" },
+                new ExtractedConcept { Label = "Stoicismo", Type = "philosophy" }
+            ]
+        };
+
+        await fixture.ProcessAsync(user.Id, "oggi sono in Milano e penso allo stoicismo", analysis);
+
+        await using var db = fixture.CreateDbContext();
+        var nodes = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id)
+            .Select(x => new { x.CanonicalName, x.Kind })
+            .ToListAsync();
+
+        Assert.Contains(nodes, x => x.CanonicalName == "Milano" && x.Kind == "place");
+        Assert.Contains(nodes, x => x.CanonicalName == "Atlas" && x.Kind == "project");
+        Assert.Contains(nodes, x => x.CanonicalName == "Stoicismo" && x.Kind == "idea");
+    }
+
     private sealed class TestFixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
@@ -252,7 +281,7 @@ public class CognitiveGraphServiceTests
             return user;
         }
 
-        public async Task ProcessAsync(Guid userId, string content)
+        public async Task ProcessAsync(Guid userId, string content, AiAnalysisResult? analysis = null)
         {
             await using var db = CreateDbContext();
             var entry = new Entry
@@ -273,7 +302,7 @@ public class CognitiveGraphServiceTests
                 new ClarificationService(db),
                 new NullLogger<CognitiveGraphService>());
 
-            await service.ProcessEntryAsync(entry, new AiAnalysisResult());
+            await service.ProcessEntryAsync(entry, analysis ?? new AiAnalysisResult());
         }
 
         public AppDbContext CreateDbContext() => new(_options);

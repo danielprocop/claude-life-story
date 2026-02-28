@@ -157,3 +157,13 @@ Questa conversazione ha consolidato la direzione del progetto.
 - aggiunto endpoint operativo `POST /api/operations/reindex/entities` per backfill/reindex entity cards
 - aggiunti test su ledger query e clarification/policy flow
 - suite backend aggiornata a 14 test verdi (`dotnet test`)
+
+### Aggiornamento successivo
+
+- migliorata la creazione tipi nodo nel grafo canonico:
+  - non solo `person`, ma anche `place`, `goal`, `project`, `activity`, `idea`, `emotion`, `problem`, `finance` e tipi dinamici derivati da concept type
+- aggiunta estrazione euristica luoghi da testo (`in Milano`, `a Roma`, ecc.) per evitare mappa "tutto persona"
+- migliorata resa frontend mappa: pill tipo nodo con colore dinamico per distinguere categorie
+- aggiunto endpoint `POST /api/operations/rebuild/memory` per rigenerare la memoria utente con la nuova logica tipi nodo
+- aggiunto test dedicato per validare la creazione multi-tipo dei nodi (`place/project/idea`)
+- suite backend aggiornata a 15 test verdi
