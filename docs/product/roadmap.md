@@ -38,6 +38,7 @@ Gia presenti o impostati:
 - aggiungere semantic retrieval
 - aggiungere hybrid retrieval per agenti
 - costruire recap e review usando anche fonti citate e non solo testo generato
+- usare OpenSearch sulle `EntityCard` per candidate retrieval di entity resolution
 
 ## Fase 4. Goal engine
 
@@ -48,6 +49,10 @@ Gia presenti o impostati:
 
 ## Fase 5. Memory engine avanzato
 
+- canonical entity graph con alias ed evidence
+- role anchors familiari e relazioni forti
+- ledger eventi / spese / settlement
+- node view interrogabile per persona ed evento
 - rafforzamento nodi e connessioni nel tempo
 - gestione conflitti tra fatti e inferenze
 - timeline coerente con revisioni e correzioni

@@ -16,6 +16,13 @@ public class AppDbContext : DbContext
     public DbSet<EnergyLog> EnergyLogs => Set<EnergyLog>();
     public DbSet<GoalItem> GoalItems => Set<GoalItem>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<CanonicalEntity> CanonicalEntities => Set<CanonicalEntity>();
+    public DbSet<EntityAlias> EntityAliases => Set<EntityAlias>();
+    public DbSet<EntityEvidence> EntityEvidence => Set<EntityEvidence>();
+    public DbSet<MemoryEvent> MemoryEvents => Set<MemoryEvent>();
+    public DbSet<EventParticipant> EventParticipants => Set<EventParticipant>();
+    public DbSet<Settlement> Settlements => Set<Settlement>();
+    public DbSet<SettlementPayment> SettlementPayments => Set<SettlementPayment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -138,6 +145,136 @@ public class AppDbContext : DbContext
                 .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(m => new { m.UserId, m.CreatedAt });
+        });
+
+        // CanonicalEntity
+        modelBuilder.Entity<CanonicalEntity>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Kind).HasMaxLength(50).IsRequired();
+            e.Property(x => x.CanonicalName).HasMaxLength(256).IsRequired();
+            e.Property(x => x.NormalizedCanonicalName).HasMaxLength(256).IsRequired();
+            e.Property(x => x.AnchorKey).HasMaxLength(100);
+            e.Property(x => x.EntityCard).IsRequired();
+            e.HasOne(x => x.User)
+                .WithMany(u => u.CanonicalEntities)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.UserId, x.Kind });
+            e.HasIndex(x => new { x.UserId, x.NormalizedCanonicalName });
+            e.HasIndex(x => new { x.UserId, x.AnchorKey }).IsUnique();
+        });
+
+        // EntityAlias
+        modelBuilder.Entity<EntityAlias>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Alias).HasMaxLength(256).IsRequired();
+            e.Property(x => x.NormalizedAlias).HasMaxLength(256).IsRequired();
+            e.Property(x => x.AliasType).HasMaxLength(50).IsRequired();
+            e.HasOne(x => x.Entity)
+                .WithMany(x => x.Aliases)
+                .HasForeignKey(x => x.EntityId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.EntityId, x.NormalizedAlias }).IsUnique();
+        });
+
+        // EntityEvidence
+        modelBuilder.Entity<EntityEvidence>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EvidenceType).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Snippet).IsRequired();
+            e.Property(x => x.PropertyName).HasMaxLength(100);
+            e.HasOne(x => x.Entity)
+                .WithMany(x => x.Evidence)
+                .HasForeignKey(x => x.EntityId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Entry)
+                .WithMany()
+                .HasForeignKey(x => x.EntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.EntityId, x.EntryId, x.EvidenceType, x.Snippet }).IsUnique();
+        });
+
+        // MemoryEvent
+        modelBuilder.Entity<MemoryEvent>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.EventType).HasMaxLength(50).IsRequired();
+            e.Property(x => x.Title).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Currency).HasMaxLength(10).IsRequired();
+            e.HasOne(x => x.User)
+                .WithMany(u => u.MemoryEvents)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Entity)
+                .WithMany()
+                .HasForeignKey(x => x.EntityId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.SourceEntry)
+                .WithMany()
+                .HasForeignKey(x => x.SourceEntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.UserId, x.OccurredAt });
+            e.HasIndex(x => new { x.UserId, x.SourceEntryId }).IsUnique();
+        });
+
+        // EventParticipant
+        modelBuilder.Entity<EventParticipant>(e =>
+        {
+            e.HasKey(x => new { x.EventId, x.EntityId });
+            e.Property(x => x.Role).HasMaxLength(30).IsRequired();
+            e.HasOne(x => x.Event)
+                .WithMany(x => x.Participants)
+                .HasForeignKey(x => x.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Entity)
+                .WithMany(x => x.EventParticipants)
+                .HasForeignKey(x => x.EntityId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Settlement
+        modelBuilder.Entity<Settlement>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Direction).HasMaxLength(30).IsRequired();
+            e.Property(x => x.Currency).HasMaxLength(10).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            e.HasOne(x => x.User)
+                .WithMany(u => u.Settlements)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Event)
+                .WithMany(x => x.Settlements)
+                .HasForeignKey(x => x.EventId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.CounterpartyEntity)
+                .WithMany(x => x.Settlements)
+                .HasForeignKey(x => x.CounterpartyEntityId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.SourceEntry)
+                .WithMany()
+                .HasForeignKey(x => x.SourceEntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.UserId, x.CounterpartyEntityId, x.Status });
+            e.HasIndex(x => new { x.UserId, x.SourceEntryId, x.CounterpartyEntityId, x.Direction, x.OriginalAmount }).IsUnique();
+        });
+
+        // SettlementPayment
+        modelBuilder.Entity<SettlementPayment>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasOne(x => x.Settlement)
+                .WithMany(x => x.Payments)
+                .HasForeignKey(x => x.SettlementId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Entry)
+                .WithMany()
+                .HasForeignKey(x => x.EntryId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.SettlementId, x.EntryId, x.Amount }).IsUnique();
         });
     }
 }

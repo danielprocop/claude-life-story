@@ -14,4 +14,7 @@ public class User
     public ICollection<EnergyLog> EnergyLogs { get; set; } = new List<EnergyLog>();
     public ICollection<GoalItem> GoalItems { get; set; } = new List<GoalItem>();
     public ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
+    public ICollection<CanonicalEntity> CanonicalEntities { get; set; } = new List<CanonicalEntity>();
+    public ICollection<MemoryEvent> MemoryEvents { get; set; } = new List<MemoryEvent>();
+    public ICollection<Settlement> Settlements { get; set; } = new List<Settlement>();
 }

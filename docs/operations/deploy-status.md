@@ -15,6 +15,7 @@ Date: 2026-02-28
 - Backend job succeeded
 - Frontend job failed
 - The release path will be simplified: GitHub Actions for backend, Amplify native CI/CD for frontend
+- Amplify app is still not repository-connected at app level: `enableBranchAutoBuild=false` on app and no repository metadata on `get-app`
 
 ## What Happens On Push
 
@@ -25,6 +26,7 @@ At the moment of this note:
 - backend deploy is handled by GitHub Actions
 - frontend deploy is expected to be handled by Amplify branch auto build
 - AWS roles and trust configuration are already prepared
+- current blocker: frontend auto-build is not truly active until repo/webhook connection is fixed in Amplify
 
 ## Backend Deploy Path
 

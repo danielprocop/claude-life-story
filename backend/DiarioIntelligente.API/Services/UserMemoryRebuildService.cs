@@ -52,6 +52,7 @@ public sealed class UserMemoryRebuildService : BackgroundService
         var entryRepo = scope.ServiceProvider.GetRequiredService<IEntryRepository>();
         var entryQueue = scope.ServiceProvider.GetRequiredService<EntryProcessingQueue>();
         var searchProjectionService = scope.ServiceProvider.GetRequiredService<ISearchProjectionService>();
+        var cognitiveGraphService = scope.ServiceProvider.GetRequiredService<ICognitiveGraphService>();
 
         var entryIds = await db.Entries
             .Where(e => e.UserId == userId)
@@ -95,6 +96,7 @@ public sealed class UserMemoryRebuildService : BackgroundService
                 .ExecuteDeleteAsync(ct);
         }
 
+        await cognitiveGraphService.ClearUserGraphAsync(userId, ct);
         await searchProjectionService.ResetUserAsync(userId, ct);
 
         var entries = await entryRepo.GetAllByUserAsync(userId);

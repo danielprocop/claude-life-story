@@ -13,6 +13,7 @@ Questa cartella e la fonte principale per:
 - [Product Vision](e:/development/personal/claude-life-story/docs/product/vision.md)
 - [Product Roadmap](e:/development/personal/claude-life-story/docs/product/roadmap.md)
 - [Product Backlog](e:/development/personal/claude-life-story/docs/product/backlog.md)
+- [Cognitive Graph](e:/development/personal/claude-life-story/docs/cognitive-graph.md)
 - [System Overview](e:/development/personal/claude-life-story/docs/architecture/system-overview.md)
 - [User Isolation Model](e:/development/personal/claude-life-story/docs/architecture/user-isolation-model.md)
 - [Search And Indexing Plan](e:/development/personal/claude-life-story/docs/architecture/search-and-indexing-plan.md)

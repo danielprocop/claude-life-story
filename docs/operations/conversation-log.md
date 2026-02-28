@@ -74,3 +74,15 @@ Questa conversazione ha consolidato la direzione del progetto.
 
 - le API di lettura entry, dashboard e search ora trattano le entry con rebuild pendente come `pending derived data`
 - in questo stato non vengono esposti concetti o conteggi stantii per evitare incoerenze subito dopo una correzione utente
+
+### Aggiornamento successivo
+
+- e stato introdotto un nuovo layer cognitivo canonico separato dai soli `Concept`
+- il backend ora modella `CanonicalEntity`, alias, evidence, eventi e settlement finanziari
+- i ruoli familiari sono trattati come role anchors stabili, per esempio `mother_of_user` e `brother_of_user`
+- il caso `mia madre` -> `Felicia` -> `Felia` viene fuso sulla stessa entita canonica
+- il caso `Adi(frattello)` viene fuso su un solo nodo persona con anchor di fratello
+- il ledger base ora supporta evento + `EventTotal` + `MyShare` + `Settlement` + chiusura tramite pagamento successivo
+- e stata aggiunta una `Node View` server-side user-scoped per persona ed evento
+- e stato creato `docs/cognitive-graph.md` come documento di riferimento del nuovo modello
+- l'utente ha confermato che in questa fase non serve preservare i dati attuali: rollout e reset pulito sono accettabili

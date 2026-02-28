@@ -46,6 +46,20 @@ Campi previsti:
 - lastSeenAt
 - linked entry ids
 
+### Entity card document
+
+Campi previsti:
+
+- entityId
+- userId
+- kind
+- canonicalName
+- anchorKey
+- aliases
+- evidence summary
+- entityCard text
+- eventual embedding vettoriale
+
 ### Goal document
 
 Campi previsti:
@@ -88,6 +102,7 @@ Al momento l'implementazione e `NoOp`, cosi:
 - il dominio applicativo non dipende ancora da OpenSearch
 - controller e pipeline AI hanno gia un punto di aggancio stabile
 - il passaggio futuro a una projection reale richiedera sostituire il servizio, non riscrivere i flussi
+- il nuovo layer cognitivo produce gia `EntityCard` canoniche pronte per essere indicizzate
 
 ## Query model
 
@@ -116,6 +131,7 @@ Poi aggiungere:
 - embeddings
 - hybrid retrieval
 - documenti goal e concept
+- documenti `EntityCard` per entity resolution e node retrieval
 
 ## Dipendenze
 

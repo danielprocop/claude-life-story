@@ -33,6 +33,7 @@ builder.Services.AddAiServices(builder.Configuration);
 // Background processing queue
 builder.Services.AddSingleton<EntryProcessingQueue>();
 builder.Services.AddSingleton<UserMemoryRebuildQueue>();
+builder.Services.AddHostedService<CognitiveSchemaBootstrapService>();
 builder.Services.AddHostedService<EntryProcessingService>();
 builder.Services.AddHostedService<UserMemoryRebuildService>();
 builder.Services.AddHostedService<EntryProcessingRecoveryService>();

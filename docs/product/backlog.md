@@ -15,6 +15,8 @@
 - definire read model per search e retrieval
 - evolvere la nuova ricerca globale applicativa in retrieval serio con ranking e filtri
 - rendere persistenti le code di processing e rebuild oggi solo recuperabili via startup scan
+- collegare davvero OpenSearch alle nuove `EntityCard` canoniche
+- esporre la nuova `Node View` anche nel frontend
 
 ## Medio
 
@@ -23,6 +25,7 @@
 - migliorare ranking del contesto in chat
 - preparare passaggio da RDS PostgreSQL a Aurora PostgreSQL
 - arricchire ancora la pagina dettaglio entry con audit e metadata di rielaborazione
+- introdurre active learning minimale quando manca informazione critica su split e settlement
 
 ## Futuro
 

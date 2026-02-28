@@ -31,6 +31,24 @@ public sealed class NoOpSearchProjectionService : ISearchProjectionService
         return Task.CompletedTask;
     }
 
+    public Task ProjectEntityAsync(CanonicalEntity entity, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug(
+            "Search projection skipped for entity {EntityId} and user {UserId}. No search backend configured.",
+            entity.Id,
+            entity.UserId);
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteEntityAsync(Guid entityId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug(
+            "Search projection delete skipped for entity {EntityId} and user {UserId}. No search backend configured.",
+            entityId,
+            userId);
+        return Task.CompletedTask;
+    }
+
     public Task ProjectGoalItemAsync(GoalItem goalItem, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug(
