@@ -79,6 +79,10 @@ public sealed class UserMemoryRebuildService : BackgroundService
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(entry => entry.EmbeddingVector, (string?)null),
                     ct);
+
+            await db.EntryProcessingStates
+                .Where(state => state.UserId == userId)
+                .ExecuteDeleteAsync(ct);
         }
 
         await db.Insights

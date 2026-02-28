@@ -113,6 +113,59 @@ public class CognitiveGraphServiceTests
         Assert.Equal(50m, settlement.Payments.Single().Amount);
     }
 
+    [Fact]
+    public async Task Explicit_Debt_Target_Is_Resolved_Without_With_Participant_Clause()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await fixture.ProcessAsync(user.Id, "ho visto Adi(fratello) oggi");
+        await fixture.ProcessAsync(user.Id, "devo 50 ad Adi");
+
+        await using var db = fixture.CreateDbContext();
+        var settlement = await db.Settlements
+            .Where(x => x.UserId == user.Id)
+            .Include(x => x.CounterpartyEntity)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync();
+
+        Assert.NotNull(settlement);
+        Assert.Equal("Adi", settlement!.CounterpartyEntity.CanonicalName);
+        Assert.Equal(50m, settlement.OriginalAmount);
+        Assert.Equal("user_owes", settlement.Direction);
+    }
+
+    [Fact]
+    public async Task Payment_Matches_Settlement_By_Amount_Not_Just_Latest()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await fixture.ProcessAsync(user.Id, "cena con Adi(fratello), devo dargli 30 perche ha pagato lui");
+        await fixture.ProcessAsync(user.Id, "nuova cena con Adi, devo dargli 50 perche ha pagato lui");
+        await fixture.ProcessAsync(user.Id, "ho dato 30 ad Adi");
+
+        await using var db = fixture.CreateDbContext();
+        var settlements = (await db.Settlements
+            .Where(x => x.UserId == user.Id)
+            .ToListAsync())
+            .OrderBy(x => x.OriginalAmount)
+            .ToList();
+
+        Assert.Equal(2, settlements.Count);
+
+        var thirty = settlements[0];
+        var fifty = settlements[1];
+
+        Assert.Equal(30m, thirty.OriginalAmount);
+        Assert.Equal("settled", thirty.Status);
+        Assert.Equal(0m, thirty.RemainingAmount);
+
+        Assert.Equal(50m, fifty.OriginalAmount);
+        Assert.Equal("open", fifty.Status);
+        Assert.Equal(50m, fifty.RemainingAmount);
+    }
+
     private sealed class TestFixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;

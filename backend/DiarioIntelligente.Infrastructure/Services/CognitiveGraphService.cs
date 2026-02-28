@@ -125,6 +125,32 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 MarkChanged(resolved, changedEntities);
             }
 
+            if (eventSignal.Counterparty == null && !string.IsNullOrWhiteSpace(eventSignal.CounterpartyName))
+            {
+                var resolvedCounterparty = participants.FirstOrDefault(entity => IsNameMatch(entity, eventSignal.CounterpartyName!))
+                    ?? await ResolveOrCreatePersonEntityAsync(
+                        entry.UserId,
+                        eventSignal.CounterpartyName!,
+                        entities,
+                        entry,
+                        roleContext.Values.ToList(),
+                        cancellationToken);
+
+                if (participants.All(x => x.Id != resolvedCounterparty.Id))
+                    participants.Add(resolvedCounterparty);
+
+                eventSignal = eventSignal with
+                {
+                    Counterparty = resolvedCounterparty,
+                    PayerEntityId = eventSignal.PayerEntityId ?? (
+                        string.Equals(eventSignal.Notes, "explicit_debt_after_other_paid", StringComparison.OrdinalIgnoreCase)
+                            ? resolvedCounterparty.Id
+                            : eventSignal.PayerEntityId)
+                };
+
+                MarkChanged(resolvedCounterparty, changedEntities);
+            }
+
             await UpsertEventAsync(entry, eventSignal, participants, entities, changedEntities, cancellationToken);
         }
         else
@@ -394,17 +420,66 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             _ => "user_owes"
         };
 
-        var settlement = await _db.Settlements
+        var candidateSettlements = await _db.Settlements
             .Where(x =>
                 x.UserId == entry.UserId &&
                 x.CounterpartyEntityId == counterparty.Id &&
                 x.Direction == directionToClose &&
-                x.Status != "settled")
+                x.Status != "settled" &&
+                x.Currency == paymentSignal.Currency)
             .OrderByDescending(x => x.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        if (candidateSettlements.Count == 0)
+            return;
+
+        var matchingRemaining = candidateSettlements
+            .Where(x => x.RemainingAmount == paymentSignal.Amount)
+            .ToList();
+
+        Settlement? settlement = matchingRemaining.Count switch
+        {
+            1 => matchingRemaining[0],
+            > 1 => matchingRemaining
+                .Where(x => x.OriginalAmount == paymentSignal.Amount)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefault(),
+            _ => null
+        };
 
         if (settlement == null)
+        {
+            var fittingCandidates = candidateSettlements
+                .Where(x => x.RemainingAmount >= paymentSignal.Amount)
+                .OrderBy(x => Math.Abs(x.RemainingAmount - paymentSignal.Amount))
+                .ThenByDescending(x => x.CreatedAt)
+                .ToList();
+
+            if (fittingCandidates.Count == 1)
+            {
+                settlement = fittingCandidates[0];
+            }
+            else if (fittingCandidates.Count > 1)
+            {
+                var smallestDelta = Math.Abs(fittingCandidates[0].RemainingAmount - paymentSignal.Amount);
+                var tied = fittingCandidates
+                    .Where(x => Math.Abs(x.RemainingAmount - paymentSignal.Amount) == smallestDelta)
+                    .ToList();
+
+                settlement = tied.Count == 1 ? tied[0] : null;
+            }
+        }
+
+        if (settlement == null)
+        {
+            _logger.LogWarning(
+                "Skipped payment mapping for entry {EntryId}: ambiguous settlement candidates for counterparty {CounterpartyId}, direction {Direction}, amount {Amount}",
+                entry.Id,
+                counterparty.Id,
+                directionToClose,
+                paymentSignal.Amount);
             return;
+        }
 
         var existingPayment = await _db.SettlementPayments
             .FirstOrDefaultAsync(x =>
@@ -747,6 +822,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             settlement?.Amount,
             settlement?.Direction ?? "user_owes",
             settlement?.Counterparty,
+            settlement?.CounterpartyName,
             settlement?.PayerEntityId,
             participants,
             content.Length > 220 ? content[..220] : content,
@@ -764,15 +840,20 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         if (explicitOwe.Success)
         {
             var amount = ParseDecimal(explicitOwe.Groups["amount"].Value);
-            var targetMatch = Regex.Match(content, @"\b(?:a|ad)\s+(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)", RegexOptions.IgnoreCase);
+            var targetMatch = Regex.Match(
+                content,
+                @"devo(?:\s+(?:dare|darli|dargli|darle|ridare|restituire))?\s+\d+(?:[.,]\d+)?(?:\s*(?:euro|€))?\s+(?:a|ad)\s+(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)",
+                RegexOptions.IgnoreCase);
+            var targetName = targetMatch.Success ? targetMatch.Groups["name"].Value : null;
             var counterparty = targetMatch.Success
-                ? participants.FirstOrDefault(x => string.Equals(x.RawName, targetMatch.Groups["name"].Value, StringComparison.OrdinalIgnoreCase))
+                ? participants.FirstOrDefault(x => Normalize(x.RawName) == Normalize(targetMatch.Groups["name"].Value))
                 : participants.FirstOrDefault();
 
             return new SettlementSignal(
                 amount,
                 "user_owes",
                 counterparty?.Entity,
+                targetName,
                 counterparty?.Entity?.Id,
                 lower.Contains("ha pagato lui") || lower.Contains("ha pagato lei") ? "explicit_debt_after_other_paid" : "explicit_debt");
         }
@@ -781,12 +862,16 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         if (explicitCredit.Success)
         {
             var amount = ParseDecimal(explicitCredit.Groups["amount"].Value);
-            var targetMatch = Regex.Match(content, @"\b(?:da|di)\s+(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)", RegexOptions.IgnoreCase);
+            var targetMatch = Regex.Match(
+                content,
+                @"mi deve\s+\d+(?:[.,]\d+)?(?:\s*(?:euro|€))?\s+(?:da|di)\s+(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)",
+                RegexOptions.IgnoreCase);
+            var targetName = targetMatch.Success ? targetMatch.Groups["name"].Value : null;
             var counterparty = targetMatch.Success
-                ? participants.FirstOrDefault(x => string.Equals(x.RawName, targetMatch.Groups["name"].Value, StringComparison.OrdinalIgnoreCase))
+                ? participants.FirstOrDefault(x => Normalize(x.RawName) == Normalize(targetMatch.Groups["name"].Value))
                 : participants.FirstOrDefault();
 
-            return new SettlementSignal(amount, "owes_user", counterparty?.Entity, null, "explicit_credit");
+            return new SettlementSignal(amount, "owes_user", counterparty?.Entity, targetName, null, "explicit_credit");
         }
 
         return null;
@@ -800,7 +885,12 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             RegexOptions.IgnoreCase);
 
         if (outgoing.Success)
-            return new PaymentSignal(ParseDecimal(outgoing.Groups["amount"].Value) ?? 0, outgoing.Groups["name"].Value, "user_paid_counterparty", outgoing.Value);
+            return new PaymentSignal(
+                ParseDecimal(outgoing.Groups["amount"].Value) ?? 0,
+                outgoing.Groups["name"].Value,
+                "user_paid_counterparty",
+                outgoing.Value,
+                "EUR");
 
         var incoming = Regex.Match(
             content,
@@ -808,7 +898,12 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             RegexOptions.IgnoreCase);
 
         if (incoming.Success)
-            return new PaymentSignal(ParseDecimal(incoming.Groups["amount"].Value) ?? 0, incoming.Groups["name"].Value, "counterparty_paid_user", incoming.Value);
+            return new PaymentSignal(
+                ParseDecimal(incoming.Groups["amount"].Value) ?? 0,
+                incoming.Groups["name"].Value,
+                "counterparty_paid_user",
+                incoming.Value,
+                "EUR");
 
         return null;
     }
@@ -908,6 +1003,18 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         if (!string.IsNullOrWhiteSpace(entity.Description))
             parts.Add(entity.Description);
         return string.Join(" | ", parts);
+    }
+
+    private static bool IsNameMatch(CanonicalEntity entity, string rawName)
+    {
+        var normalized = Normalize(rawName);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        if (entity.NormalizedCanonicalName == normalized)
+            return true;
+
+        return entity.Aliases.Any(alias => alias.NormalizedAlias == normalized);
     }
 
     private static SettlementSummaryResponse MapSettlement(Settlement settlement)
@@ -1035,6 +1142,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         decimal? Amount,
         string Direction,
         CanonicalEntity? Counterparty,
+        string? CounterpartyName,
         Guid? PayerEntityId,
         string Notes);
 
@@ -1046,6 +1154,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         decimal? SettlementAmount,
         string SettlementDirection,
         CanonicalEntity? Counterparty,
+        string? CounterpartyName,
         Guid? PayerEntityId,
         List<ParticipantRef> Participants,
         string SourceSnippet,
@@ -1055,5 +1164,6 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         decimal Amount,
         string CounterpartyName,
         string Direction,
-        string SourceSnippet);
+        string SourceSnippet,
+        string Currency);
 }

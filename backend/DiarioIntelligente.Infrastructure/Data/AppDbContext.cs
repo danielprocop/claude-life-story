@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<EventParticipant> EventParticipants => Set<EventParticipant>();
     public DbSet<Settlement> Settlements => Set<Settlement>();
     public DbSet<SettlementPayment> SettlementPayments => Set<SettlementPayment>();
+    public DbSet<EntryProcessingState> EntryProcessingStates => Set<EntryProcessingState>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +46,10 @@ public class AppDbContext : DbContext
                 .HasForeignKey(en => en.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(en => new { en.UserId, en.CreatedAt });
+            e.HasOne(en => en.ProcessingState)
+                .WithOne(state => state.Entry)
+                .HasForeignKey<EntryProcessingState>(state => state.EntryId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Concept
@@ -275,6 +280,18 @@ public class AppDbContext : DbContext
                 .HasForeignKey(x => x.EntryId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => new { x.SettlementId, x.EntryId, x.Amount }).IsUnique();
+        });
+
+        // EntryProcessingState
+        modelBuilder.Entity<EntryProcessingState>(e =>
+        {
+            e.HasKey(x => x.EntryId);
+            e.HasOne(x => x.User)
+                .WithMany(x => x.EntryProcessingStates)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => new { x.UserId, x.SourceUpdatedAt });
         });
     }
 }

@@ -114,3 +114,12 @@ Questa conversazione ha consolidato la direzione del progetto.
 - push di verifica eseguito dopo il fix IAM
 - run GitHub `#13` completato con successo su entrambi i job (`Deploy Backend`, `Deploy Frontend`)
 - frontend deploy automatico confermato via Amplify job `5` in stato `SUCCEED`
+
+### Aggiornamento successivo
+
+- OpenSearch abilitato a livello account: avviata creazione del domain `diario-search-dev` in `eu-west-1` (engine `OpenSearch_2.19`)
+- fix critico recovery: introdotto `EntryProcessingState` persistente per tracciare il completamento reale del processing entry
+- startup recovery ora usa lo stato persistente e non dipende piu da presenza API key / embedding / energy log
+- fix ledger: pagamento non viene piu applicato in modo cieco all'ultimo debito aperto; ora usa matching deterministico e salta i casi ambigui
+- fix entity/settlement extraction: `devo X a Y` risolve Y anche senza clausola `con ...`
+- estesa la suite test con casi su recovery startup e su matching debt/payment

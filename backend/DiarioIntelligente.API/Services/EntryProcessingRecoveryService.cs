@@ -6,23 +6,18 @@ namespace DiarioIntelligente.API.Services;
 public sealed class EntryProcessingRecoveryService : IHostedService
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<EntryProcessingRecoveryService> _logger;
 
     public EntryProcessingRecoveryService(
         IServiceProvider serviceProvider,
-        IConfiguration configuration,
         ILogger<EntryProcessingRecoveryService> logger)
     {
         _serviceProvider = serviceProvider;
-        _configuration = configuration;
         _logger = logger;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var hasAiAnalysis = !string.IsNullOrWhiteSpace(_configuration["OpenAI:ApiKey"]);
-
         using var scope = _serviceProvider.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var processingQueue = scope.ServiceProvider.GetRequiredService<EntryProcessingQueue>();
@@ -35,9 +30,11 @@ public sealed class EntryProcessingRecoveryService : IHostedService
             .ToListAsync(cancellationToken);
 
         var usersNeedingRebuild = await db.Entries
-            .Where(entry => entry.UpdatedAt != null &&
-                (entry.EmbeddingVector == null ||
-                 !db.EnergyLogs.Any(log => log.EntryId == entry.Id && log.RecordedAt >= entry.UpdatedAt)))
+            .Where(entry =>
+                entry.UpdatedAt != null &&
+                !db.EntryProcessingStates.Any(state =>
+                    state.EntryId == entry.Id &&
+                    state.SourceUpdatedAt == entry.UpdatedAt))
             .Select(entry => entry.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -50,19 +47,15 @@ public sealed class EntryProcessingRecoveryService : IHostedService
         foreach (var userId in rebuildUsers)
             await rebuildQueue.EnqueueAsync(userId, cancellationToken);
 
-        var pendingEntries = new List<PendingEntry>();
-        if (hasAiAnalysis)
-        {
-            pendingEntries = await db.Entries
-                .Where(entry => !rebuildUsers.Contains(entry.UserId) &&
-                    entry.UpdatedAt == null &&
-                    entry.EmbeddingVector == null &&
-                    !db.EnergyLogs.Any(log => log.EntryId == entry.Id))
-                .OrderBy(entry => entry.CreatedAt)
-                .Select(entry => new PendingEntry(entry.Id, entry.UserId))
-                .Take(500)
-                .ToListAsync(cancellationToken);
-        }
+        var pendingEntries = await db.Entries
+            .Where(entry =>
+                !rebuildUsers.Contains(entry.UserId) &&
+                entry.UpdatedAt == null &&
+                !db.EntryProcessingStates.Any(state => state.EntryId == entry.Id))
+            .OrderBy(entry => entry.CreatedAt)
+            .Select(entry => new PendingEntry(entry.Id, entry.UserId))
+            .Take(500)
+            .ToListAsync(cancellationToken);
 
         foreach (var entry in pendingEntries)
             await processingQueue.EnqueueAsync(new EntryProcessingJob(entry.Id, entry.UserId), cancellationToken);

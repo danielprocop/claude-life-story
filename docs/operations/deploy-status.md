@@ -22,7 +22,8 @@ Date: 2026-02-28
 - IAM fix applied: role `GitHubActionsDiarioDeployRole` now includes `.../branches/main/deployments/*` and `.../branches/main/jobs/*` with `CreateDeployment`, `StartDeployment`, `GetJob`, `ListJobs`
 - Workflow run `#13` (commit `e256514`) completed with `success` on both jobs (`Deploy Backend`, `Deploy Frontend`)
 - Amplify branch `main` received job `5` with status `SUCCEED`
-- as of 2026-02-28, no classic OpenSearch domains are present in the AWS account, and OpenSearch Serverless is not currently reachable from this environment
+- OpenSearch domain provisioning started: `diario-search-dev` (`eu-west-1`, `OpenSearch_2.19`)
+- OpenSearch Serverless is still not reachable from this environment
 
 ## What Happens On Push
 
@@ -33,7 +34,7 @@ At the moment of this note:
 - backend deploy is handled by GitHub Actions
 - frontend build, artifact upload, and deploy to Amplify are handled by GitHub Actions
 - AWS roles and trust configuration are already prepared
-- current blocker for semantic retrieval rollout: there is no reachable OpenSearch resource to wire the new `EntityCard` projection against
+- current blocker for semantic retrieval rollout: domain provisioning must complete before wiring `EntityCard` projection
 
 ## Backend Deploy Path
 

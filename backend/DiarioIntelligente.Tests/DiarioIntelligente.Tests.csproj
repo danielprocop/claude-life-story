@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DiarioIntelligente.Core\DiarioIntelligente.Core.csproj" />
+    <ProjectReference Include="..\DiarioIntelligente.API\DiarioIntelligente.API.csproj" />
     <ProjectReference Include="..\DiarioIntelligente.Infrastructure\DiarioIntelligente.Infrastructure.csproj" />
   </ItemGroup>
 

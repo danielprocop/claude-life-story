@@ -12,4 +12,5 @@ public class Entry
 
     public User User { get; set; } = null!;
     public ICollection<EntryConceptMap> EntryConceptMaps { get; set; } = new List<EntryConceptMap>();
+    public EntryProcessingState? ProcessingState { get; set; }
 }

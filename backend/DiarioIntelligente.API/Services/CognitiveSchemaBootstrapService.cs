@@ -142,7 +142,18 @@ public sealed class CognitiveSchemaBootstrapService : IHostedService
             "RecordedAt" timestamp with time zone NOT NULL
         )
         """,
-        """CREATE UNIQUE INDEX IF NOT EXISTS "IX_SettlementPayments_SettlementId_EntryId_Amount" ON "SettlementPayments" ("SettlementId", "EntryId", "Amount")"""
+        """CREATE UNIQUE INDEX IF NOT EXISTS "IX_SettlementPayments_SettlementId_EntryId_Amount" ON "SettlementPayments" ("SettlementId", "EntryId", "Amount")""",
+        """
+        CREATE TABLE IF NOT EXISTS "EntryProcessingStates" (
+            "EntryId" uuid NOT NULL PRIMARY KEY REFERENCES "Entries"("Id") ON DELETE CASCADE,
+            "UserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+            "SourceUpdatedAt" timestamp with time zone NULL,
+            "LastProcessedAt" timestamp with time zone NOT NULL,
+            "UsedAiAnalysis" boolean NOT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId" ON "EntryProcessingStates" ("UserId")""",
+        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId_SourceUpdatedAt" ON "EntryProcessingStates" ("UserId", "SourceUpdatedAt")"""
     };
 
     private static readonly string[] SqliteStatements =
@@ -250,6 +261,17 @@ public sealed class CognitiveSchemaBootstrapService : IHostedService
             "RecordedAt" TEXT NOT NULL
         )
         """,
-        """CREATE UNIQUE INDEX IF NOT EXISTS "IX_SettlementPayments_SettlementId_EntryId_Amount" ON "SettlementPayments" ("SettlementId", "EntryId", "Amount")"""
+        """CREATE UNIQUE INDEX IF NOT EXISTS "IX_SettlementPayments_SettlementId_EntryId_Amount" ON "SettlementPayments" ("SettlementId", "EntryId", "Amount")""",
+        """
+        CREATE TABLE IF NOT EXISTS "EntryProcessingStates" (
+            "EntryId" TEXT NOT NULL PRIMARY KEY REFERENCES "Entries"("Id") ON DELETE CASCADE,
+            "UserId" TEXT NOT NULL REFERENCES "Users"("Id") ON DELETE CASCADE,
+            "SourceUpdatedAt" TEXT NULL,
+            "LastProcessedAt" TEXT NOT NULL,
+            "UsedAiAnalysis" INTEGER NOT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId" ON "EntryProcessingStates" ("UserId")""",
+        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId_SourceUpdatedAt" ON "EntryProcessingStates" ("UserId", "SourceUpdatedAt")"""
     };
 }

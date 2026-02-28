@@ -1,6 +1,8 @@
 using System.Text.Json;
 using DiarioIntelligente.Core.Interfaces;
 using DiarioIntelligente.Core.Models;
+using DiarioIntelligente.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace DiarioIntelligente.API.Services;
 
@@ -50,6 +52,7 @@ public class EntryProcessingService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var aiService = scope.ServiceProvider.GetRequiredService<IAiService>();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var entryRepo = scope.ServiceProvider.GetRequiredService<IEntryRepository>();
         var conceptRepo = scope.ServiceProvider.GetRequiredService<IConceptRepository>();
         var connectionRepo = scope.ServiceProvider.GetRequiredService<IConnectionRepository>();
@@ -66,6 +69,13 @@ public class EntryProcessingService : BackgroundService
                 job.EntryId,
                 job.UserId);
             await searchProjectionService.DeleteEntryAsync(job.EntryId, job.UserId, ct);
+            var staleState = await db.EntryProcessingStates
+                .FirstOrDefaultAsync(state => state.EntryId == job.EntryId, ct);
+            if (staleState != null)
+            {
+                db.EntryProcessingStates.Remove(staleState);
+                await db.SaveChangesAsync(ct);
+            }
             return;
         }
 
@@ -99,6 +109,7 @@ public class EntryProcessingService : BackgroundService
             var projectedWithoutAi = await entryRepo.GetByIdAsync(job.EntryId, job.UserId);
             if (projectedWithoutAi != null)
                 await searchProjectionService.ProjectEntryAsync(projectedWithoutAi, ct);
+            await UpsertProcessingStateAsync(db, entry, hasAiAnalysis, ct);
             return;
         }
 
@@ -253,6 +264,37 @@ public class EntryProcessingService : BackgroundService
         if (projectedEntry != null)
             await searchProjectionService.ProjectEntryAsync(projectedEntry, ct);
 
+        await UpsertProcessingStateAsync(db, entry, hasAiAnalysis, ct);
+
         _logger.LogInformation("Entry {EntryId} processing completed", job.EntryId);
+    }
+
+    private static async Task UpsertProcessingStateAsync(
+        AppDbContext db,
+        Entry entry,
+        bool usedAiAnalysis,
+        CancellationToken ct)
+    {
+        var state = await db.EntryProcessingStates.FirstOrDefaultAsync(x => x.EntryId == entry.Id, ct);
+        if (state == null)
+        {
+            db.EntryProcessingStates.Add(new EntryProcessingState
+            {
+                EntryId = entry.Id,
+                UserId = entry.UserId,
+                SourceUpdatedAt = entry.UpdatedAt,
+                LastProcessedAt = DateTime.UtcNow,
+                UsedAiAnalysis = usedAiAnalysis
+            });
+        }
+        else
+        {
+            state.UserId = entry.UserId;
+            state.SourceUpdatedAt = entry.UpdatedAt;
+            state.LastProcessedAt = DateTime.UtcNow;
+            state.UsedAiAnalysis = usedAiAnalysis;
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 }
