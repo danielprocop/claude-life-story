@@ -52,3 +52,4 @@ Questa conversazione ha consolidato la direzione del progetto.
 - l'implementazione attuale e `NoOp`, per preparare l'integrazione futura con OpenSearch senza cambiare i flussi applicativi
 - e stata aggiunta una ricerca globale per utente su entry, concetti e goal come fallback applicativo prima di OpenSearch
 - le review ora espongono anche le entry sorgente usate come base, per aumentare verificabilita e fiducia nell'output AI
+- e stata aggiunta una pagina dettaglio entry e la navigazione dalle fonti di chat, review, timeline e ricerca verso la singola entry

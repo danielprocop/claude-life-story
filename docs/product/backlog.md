@@ -14,6 +14,7 @@
 - migliorare il modello goal -> micro-step
 - definire read model per search e retrieval
 - evolvere la nuova ricerca globale applicativa in retrieval serio con ranking e filtri
+- espandere la nuova pagina dettaglio entry con correzione, metadata e link contestuali
 
 ## Medio
 

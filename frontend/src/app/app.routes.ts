@@ -15,6 +15,7 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', loadComponent: () => import('./pages/dashboard').then(m => m.Dashboard) },
+      { path: 'entries/:id', loadComponent: () => import('./pages/entry-detail').then(m => m.EntryDetailPage) },
       { path: 'write', loadComponent: () => import('./pages/write').then(m => m.Write) },
       { path: 'chat', loadComponent: () => import('./pages/chat').then(m => m.Chat) },
       { path: 'search', loadComponent: () => import('./pages/search').then(m => m.SearchPage) },

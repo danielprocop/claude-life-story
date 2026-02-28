@@ -39,9 +39,12 @@
         <h4>Fonti utilizzate</h4>
         @for (s of sources(); track s.entryId) {
           <div class="source-item">
-            <span class="source-date">{{ s.date | date:'dd/MM/yyyy' }}</span>
-            <span class="source-similarity">{{ (s.similarity * 100).toFixed(0) }}%</span>
+            <div class="source-head">
+              <span class="source-date">{{ s.date | date:'dd/MM/yyyy' }}</span>
+              <span class="source-similarity">{{ (s.similarity * 100).toFixed(0) }}%</span>
+            </div>
             <p>{{ s.preview }}</p>
+            <a [routerLink]="['/entries', s.entryId]">Apri entry</a>
           </div>
         }
       </div>

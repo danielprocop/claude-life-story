@@ -1,10 +1,11 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { Api, EntryListResponse } from '../services/api';
 
 @Component({
   selector: 'app-timeline',
-  imports: [DatePipe],
+  imports: [DatePipe, RouterLink],
   templateUrl: './timeline.html',
   styleUrl: './timeline.scss',
 })

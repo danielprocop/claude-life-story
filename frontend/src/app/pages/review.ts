@@ -1,10 +1,11 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { Api, ReviewResponse } from '../services/api';
 
 @Component({
   selector: 'app-review',
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './review.html',
   styleUrl: './review.scss',
 })

@@ -89,6 +89,7 @@
               <article class="source-card">
                 <p class="source-date">{{ source.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
                 <p class="source-preview">{{ source.preview }}</p>
+                <a class="source-link" [routerLink]="['/entries', source.entryId]">Apri entry</a>
               </article>
             }
           </div>

@@ -116,9 +116,6 @@
 }
 
 .source-item {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid #f0f0f0;
 
@@ -126,26 +123,37 @@
     border-bottom: none;
   }
 
-  .source-date {
-    font-size: 11px;
-    color: #999;
-    white-space: nowrap;
-  }
-
-  .source-similarity {
-    font-size: 11px;
-    color: #6c63ff;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
   p {
     font-size: 12px;
     color: #666;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin: 6px 0;
   }
+
+  a {
+    display: inline-flex;
+    color: #9f4a20;
+    font-size: 12px;
+    font-weight: 700;
+  }
+}
+
+.source-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.source-date {
+  font-size: 11px;
+  color: #999;
+  white-space: nowrap;
+}
+
+.source-similarity {
+  font-size: 11px;
+  color: #6c63ff;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .input-area {

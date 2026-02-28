@@ -1,0 +1,34 @@
+<section class="entry-detail-page">
+  <a class="back-link" routerLink="/timeline">← Torna alla timeline</a>
+
+  @if (loading()) {
+    <div class="state-card">Caricamento entry...</div>
+  } @else if (error()) {
+    <div class="state-card error">{{ error() }}</div>
+  } @else if (entry(); as e) {
+    <article class="entry-card">
+      <header class="entry-header">
+        <p class="entry-date">{{ e.createdAt | date:'dd MMM yyyy, HH:mm' }}</p>
+        @if (e.updatedAt) {
+          <p class="entry-updated">Aggiornata {{ e.updatedAt | date:'dd MMM yyyy, HH:mm' }}</p>
+        }
+      </header>
+
+      <div class="entry-content">{{ e.content }}</div>
+
+      @if (e.concepts?.length) {
+        <section class="concepts-section">
+          <h3>Concetti estratti</h3>
+          <div class="concept-grid">
+            @for (concept of e.concepts!; track concept.id) {
+              <div class="concept-pill">
+                <span class="concept-type">{{ concept.type }}</span>
+                <strong>{{ concept.label }}</strong>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    </article>
+  }
+</section>

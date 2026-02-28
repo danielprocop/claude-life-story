@@ -52,7 +52,7 @@
             <article class="result-card">
               <p class="result-meta">{{ entry.createdAt | date:'dd MMM yyyy, HH:mm' }} · {{ entry.conceptCount }} concetti</p>
               <p class="result-text">{{ entry.preview }}</p>
-              <a [routerLink]="['/timeline']">Apri timeline</a>
+              <a [routerLink]="['/entries', entry.id]">Apri entry</a>
             </article>
           }
         </div>

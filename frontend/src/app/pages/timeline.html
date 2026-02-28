@@ -15,6 +15,7 @@
           @if (entry.conceptCount > 0) {
             <div class="entry-meta">{{ entry.conceptCount }} concetti estratti</div>
           }
+          <a class="entry-link" [routerLink]="['/entries', entry.id]">Apri entry</a>
         </div>
       }
     </div>
