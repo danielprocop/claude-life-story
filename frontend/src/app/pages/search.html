@@ -3,7 +3,7 @@
     <p class="eyebrow">Retrieval</p>
     <h2>Ricerca nella memoria personale</h2>
     <p class="page-subtitle">
-      Cerca entry, concetti e obiettivi del tuo profilo. Questo e il fallback applicativo prima del layer OpenSearch.
+      Cerca entry, entita canoniche, concetti e obiettivi del tuo profilo personale.
     </p>
   </header>
 
@@ -39,6 +39,34 @@
     <section class="result-summary">
       <strong>{{ totalResults() }}</strong> risultati per <span>"{{ results()?.query }}"</span>
     </section>
+
+    @if (results()?.entities?.length) {
+      <section class="result-section">
+        <div class="section-header">
+          <h3>Entita canoniche</h3>
+          <span>{{ results()!.entities.length }}</span>
+        </div>
+
+        <div class="result-grid">
+          @for (entity of results()!.entities; track entity.id) {
+            <article class="result-card entity-card">
+              <p class="pill">{{ entity.kind }}</p>
+              <h4>{{ entity.canonicalName }}</h4>
+              @if (entity.anchorKey) {
+                <p class="result-meta">Anchor: {{ entity.anchorKey }}</p>
+              }
+              @if (entity.aliases.length) {
+                <p class="result-text">Alias: {{ entity.aliases.join(', ') }}</p>
+              }
+              <p class="result-meta">
+                {{ entity.evidenceCount }} evidenze · aggiornato {{ entity.updatedAt | date:'dd MMM yyyy, HH:mm' }}
+              </p>
+              <a [routerLink]="['/nodes', entity.id]">Apri nodo</a>
+            </article>
+          }
+        </div>
+      </section>
+    }
 
     @if (results()?.entries?.length) {
       <section class="result-section">

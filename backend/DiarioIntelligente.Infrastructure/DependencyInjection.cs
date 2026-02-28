@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
         services.AddScoped<ISearchProjectionService, NoOpSearchProjectionService>();
         services.AddScoped<ICognitiveGraphService, CognitiveGraphService>();
+        services.AddScoped<IPersonalModelService, PersonalModelService>();
 
         return services;
     }

@@ -40,6 +40,7 @@ export class SearchPage {
           entries: [],
           concepts: [],
           goalItems: [],
+          entities: [],
         });
         this.loading.set(false);
       },
@@ -52,6 +53,6 @@ export class SearchPage {
       return 0;
     }
 
-    return response.entries.length + response.concepts.length + response.goalItems.length;
+    return response.entries.length + response.concepts.length + response.goalItems.length + response.entities.length;
   }
 }

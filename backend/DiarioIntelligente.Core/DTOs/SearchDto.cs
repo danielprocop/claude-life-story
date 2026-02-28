@@ -4,7 +4,8 @@ public record SearchResponse(
     string Query,
     List<EntrySearchHit> Entries,
     List<ConceptSearchHit> Concepts,
-    List<GoalItemSearchHit> GoalItems
+    List<GoalItemSearchHit> GoalItems,
+    List<EntitySearchHit> Entities
 );
 
 public record EntrySearchHit(
@@ -29,4 +30,14 @@ public record GoalItemSearchHit(
     string Status,
     DateTime CreatedAt,
     int SubGoalCount
+);
+
+public record EntitySearchHit(
+    Guid Id,
+    string Kind,
+    string CanonicalName,
+    string? AnchorKey,
+    List<string> Aliases,
+    int EvidenceCount,
+    DateTime UpdatedAt
 );

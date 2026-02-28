@@ -37,6 +37,27 @@ public class CognitiveGraphServiceTests
     }
 
     [Fact]
+    public async Task Merges_Mother_With_Typo_SiChima_And_Lowercase_Name()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await fixture.ProcessAsync(user.Id, "le mie figlie oggi sono da mia madre");
+        await fixture.ProcessAsync(user.Id, "mia madre si chima felicia");
+        await fixture.ProcessAsync(user.Id, "felia mi ha scritto");
+
+        await using var db = fixture.CreateDbContext();
+        var entities = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.AnchorKey == "mother_of_user")
+            .Include(x => x.Aliases)
+            .ToListAsync();
+
+        var mother = Assert.Single(entities);
+        Assert.Equal("Felicia", mother.CanonicalName);
+        Assert.Contains(mother.Aliases, x => x.NormalizedAlias == "felia");
+    }
+
+    [Fact]
     public async Task Resolves_Adi_Fratello_To_Single_Person_Node()
     {
         await using var fixture = await TestFixture.CreateAsync();
@@ -164,6 +185,30 @@ public class CognitiveGraphServiceTests
         Assert.Equal(50m, fifty.OriginalAmount);
         Assert.Equal("open", fifty.Status);
         Assert.Equal(50m, fifty.RemainingAmount);
+    }
+
+    [Fact]
+    public async Task Node_Search_Finds_Canonical_Entity_By_Role_And_Alias()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await fixture.ProcessAsync(user.Id, "le mie figlie sono da mia madre");
+        await fixture.ProcessAsync(user.Id, "mia madre si chiama Felicia");
+        await fixture.ProcessAsync(user.Id, "oggi Felia era con le bambine");
+
+        await using var db = fixture.CreateDbContext();
+        var service = new CognitiveGraphService(
+            db,
+            new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
+            new NullLogger<CognitiveGraphService>());
+
+        var byRole = await service.SearchNodesAsync(user.Id, "madre", 10);
+        var byAlias = await service.SearchNodesAsync(user.Id, "felia", 10);
+
+        Assert.NotEmpty(byRole.Items);
+        Assert.NotEmpty(byAlias.Items);
+        Assert.Equal(byRole.Items[0].Id, byAlias.Items[0].Id);
     }
 
     private sealed class TestFixture : IAsyncDisposable

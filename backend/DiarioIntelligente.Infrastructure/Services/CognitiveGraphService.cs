@@ -27,6 +27,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         new(@"(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)\s*\((?<role>[A-Za-zÀ-ÿ ]+)\)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex CapitalizedTokenRegex =
         new(@"\b(?<name>[A-ZÀ-Ý][a-zà-ÿ'’\-]{2,})\b", RegexOptions.Compiled);
+    private static readonly Regex SentenceStartTokenRegex =
+        new(@"^\s*(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]{2,})\b", RegexOptions.Compiled);
     private static readonly Regex AmountRegex =
         new(@"(?<amount>\d+(?:[.,]\d+)?)\s*(?:euro|€)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
@@ -217,6 +219,64 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         }
 
         await _db.CanonicalEntities.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+    }
+
+    public async Task<NodeSearchResponse> SearchNodesAsync(
+        Guid userId,
+        string? query,
+        int limit = 24,
+        CancellationToken cancellationToken = default)
+    {
+        var safeLimit = Math.Clamp(limit, 1, 100);
+        var rawQuery = query?.Trim() ?? string.Empty;
+        var normalizedQuery = Normalize(rawQuery);
+        var loweredQuery = rawQuery.ToLowerInvariant();
+
+        IQueryable<CanonicalEntity> filtered = _db.CanonicalEntities.Where(x => x.UserId == userId);
+        if (!string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            filtered = filtered.Where(x =>
+                x.NormalizedCanonicalName.Contains(normalizedQuery) ||
+                x.Aliases.Any(alias => alias.NormalizedAlias.Contains(normalizedQuery)) ||
+                (!string.IsNullOrWhiteSpace(x.AnchorKey) && x.AnchorKey!.Contains(loweredQuery)) ||
+                x.EntityCard.ToLower().Contains(loweredQuery));
+        }
+
+        var totalCount = await filtered.CountAsync(cancellationToken);
+
+        var maxCandidates = Math.Clamp(safeLimit * 8, 48, 320);
+        var candidates = await filtered
+            .Include(x => x.Aliases)
+            .Include(x => x.Evidence)
+            .OrderByDescending(x => x.UpdatedAt)
+            .Take(maxCandidates)
+            .ToListAsync(cancellationToken);
+
+        var ranked = candidates
+            .Select(x => new
+            {
+                Entity = x,
+                Score = ScoreEntityForSearch(x, normalizedQuery, loweredQuery)
+            })
+            .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => x.Entity.UpdatedAt)
+            .Take(safeLimit)
+            .Select(x => new NodeSearchItemResponse(
+                x.Entity.Id,
+                x.Entity.Kind,
+                x.Entity.CanonicalName,
+                x.Entity.AnchorKey,
+                x.Entity.Aliases
+                    .Select(alias => alias.Alias)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(alias => alias)
+                    .Take(8)
+                    .ToList(),
+                x.Entity.Evidence.Count,
+                x.Entity.UpdatedAt))
+            .ToList();
+
+        return new NodeSearchResponse(rawQuery, ranked, totalCount);
     }
 
     public async Task<NodeViewResponse?> GetNodeViewAsync(Guid userId, Guid entityId, CancellationToken cancellationToken = default)
@@ -717,7 +777,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             foreach (var alias in role.Aliases)
             {
                 var regex = new Regex(
-                    $@"\b{Regex.Escape(alias)}\b[^.!?\n]{{0,40}}?\bsi chiama\b\s+(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)",
+                    $@"\b{Regex.Escape(alias)}\b[^.!?\n]{{0,45}}?\bsi\s+ch(?:ia|i)?ma\b\s+(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)",
                     RegexOptions.IgnoreCase);
 
                 foreach (Match match in regex.Matches(content))
@@ -748,6 +808,23 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         foreach (Match match in CapitalizedTokenRegex.Matches(content))
         {
+            var token = match.Groups["name"].Value.Trim();
+            if (token.Length < 3 || IsCommonNonNameToken(token))
+                continue;
+
+            if (seen.Add(token))
+                yield return token;
+        }
+
+        foreach (var sentence in Regex.Split(content, @"[.!?\n]+"))
+        {
+            if (string.IsNullOrWhiteSpace(sentence))
+                continue;
+
+            var match = SentenceStartTokenRegex.Match(sentence);
+            if (!match.Success)
+                continue;
+
             var token = match.Groups["name"].Value.Trim();
             if (token.Length < 3 || IsCommonNonNameToken(token))
                 continue;
@@ -1031,6 +1108,36 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             settlement.Event?.Title);
     }
 
+    private static int ScoreEntityForSearch(CanonicalEntity entity, string normalizedQuery, string loweredQuery)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedQuery) && string.IsNullOrWhiteSpace(loweredQuery))
+            return 0;
+
+        var score = 0;
+        if (entity.NormalizedCanonicalName == normalizedQuery)
+            score += 120;
+        if (entity.Aliases.Any(alias => alias.NormalizedAlias == normalizedQuery))
+            score += 110;
+        if (!string.IsNullOrWhiteSpace(normalizedQuery) && entity.NormalizedCanonicalName.Contains(normalizedQuery))
+            score += 75;
+        if (!string.IsNullOrWhiteSpace(normalizedQuery) && entity.Aliases.Any(alias => alias.NormalizedAlias.Contains(normalizedQuery)))
+            score += 65;
+        if (!string.IsNullOrWhiteSpace(entity.AnchorKey) &&
+            !string.IsNullOrWhiteSpace(loweredQuery) &&
+            entity.AnchorKey!.Contains(loweredQuery, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 45;
+        }
+        if (!string.IsNullOrWhiteSpace(loweredQuery) &&
+            entity.EntityCard.Contains(loweredQuery, StringComparison.OrdinalIgnoreCase))
+        {
+            score += 25;
+        }
+        if (!string.IsNullOrWhiteSpace(entity.AnchorKey))
+            score += 5;
+        return score;
+    }
+
     private static string Normalize(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
@@ -1063,7 +1170,27 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
     private static bool IsCommonNonNameToken(string token)
     {
-        return token is "Oggi" or "Ieri" or "Domani" or "Sono" or "Siamo" or "Abbiamo" or "Ho" or "Poi" or "Con" or "Mia" or "Mio";
+        return token.ToLowerInvariant() is
+            "oggi" or
+            "ieri" or
+            "domani" or
+            "sono" or
+            "siamo" or
+            "abbiamo" or
+            "ho" or
+            "poi" or
+            "con" or
+            "mia" or
+            "mio" or
+            "le" or
+            "la" or
+            "il" or
+            "un" or
+            "una" or
+            "devo" or
+            "mi" or
+            "ha" or
+            "hanno";
     }
 
     private static decimal? ParseDecimal(string raw)

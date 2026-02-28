@@ -123,3 +123,16 @@ Questa conversazione ha consolidato la direzione del progetto.
 - fix ledger: pagamento non viene piu applicato in modo cieco all'ultimo debito aperto; ora usa matching deterministico e salta i casi ambigui
 - fix entity/settlement extraction: `devo X a Y` risolve Y anche senza clausola `con ...`
 - estesa la suite test con casi su recovery startup e su matching debt/payment
+
+### Aggiornamento successivo
+
+- eseguito reset completo dei dati su PostgreSQL RDS via `TRUNCATE ... RESTART IDENTITY CASCADE` su tutte le tabelle applicative
+- retrieval aggiornato: `Search` ora include anche entita canoniche oltre a entry/concetti/goal
+- esposta ricerca nodi canonici user-scoped via `GET /api/nodes`
+- frontend aggiornato con Node View dedicata (`/nodes/:id`) e link diretti da ricerca e mappa
+- pagina `Graph` rifatta come mappa cognitiva canonica (filtro per nome/alias/anchor + apertura nodo)
+- introdotto modello personale utente via `GET /api/profile` con contesto compatto, segnali personalita, focus e micro-step adattivi
+- dashboard aggiornata per mostrare il modello personale e i micro-step suggeriti
+- robustezza NLP migliorata: supporto `si chima` e nomi in minuscolo a inizio frase per merge entita
+- test backend portati a 12/12 verdi dopo i nuovi casi (merge typo, node search, personal model)
+- build frontend `ng build` completata con successo

@@ -1,51 +1,62 @@
 <div class="graph-page">
   <div class="graph-header">
     <div>
-      <h2 class="page-title">Grafo dei Concetti</h2>
-      <p class="page-subtitle">Mappa interattiva delle connessioni tra i concetti del tuo diario</p>
+      <h2 class="page-title">Mappa Cognitiva</h2>
+      <p class="page-subtitle">Nodi canonici personali: persone, eventi, alias, evidence e relazioni forti.</p>
     </div>
-    @if (graph() && graph()!.nodes.length > 0) {
+    @if (response()) {
       <div class="graph-stats">
         <div class="stat">
-          <span class="stat-value">{{ graph()!.nodes.length }}</span>
+          <span class="stat-value">{{ response()!.items.length }}</span>
           <span class="stat-label">Nodi</span>
         </div>
         <div class="stat">
-          <span class="stat-value">{{ graph()!.edges.length }}</span>
-          <span class="stat-label">Connessioni</span>
+          <span class="stat-value">{{ response()!.totalCount }}</span>
+          <span class="stat-label">Totali</span>
         </div>
       </div>
     }
   </div>
 
+  <form class="filter-bar" (ngSubmit)="submit()">
+    <input
+      [ngModel]="query()"
+      (ngModelChange)="query.set($event)"
+      name="query"
+      type="search"
+      placeholder="Filtra nodi per nome, alias o anchor..."
+    />
+    <button type="submit" [disabled]="loading()">{{ loading() ? 'Caricamento...' : 'Filtra' }}</button>
+  </form>
+
   @if (loading()) {
-    <div class="loading">Caricamento...</div>
-  } @else if (!graph() || graph()!.nodes.length === 0) {
-    <div class="empty">Nessun concetto estratto ancora. Scrivi qualcosa e l'AI fara il resto!</div>
+    <div class="loading">Caricamento nodi...</div>
+  } @else if (!response() || response()!.items.length === 0) {
+    <div class="empty">Nessun nodo trovato. Inserisci nuove entry per costruire la memoria canonica.</div>
   } @else {
-    <div class="graph-container">
-      <div #cyContainer class="cy-canvas"></div>
-
-      @if (selectedNode()) {
-        <div class="node-detail">
-          <button class="detail-close" (click)="closeDetail()">&times;</button>
-          <div class="detail-type" [style.color]="getTypeColor(selectedNode()!.type)">
-            {{ getTypeLabel(selectedNode()!.type) }}
-          </div>
-          <h3 class="detail-label">{{ selectedNode()!.label }}</h3>
-          <div class="detail-meta">Presente in {{ selectedNode()!.weight }} entry</div>
-        </div>
+    <section class="kind-summary">
+      @for (item of groupedByKind() | keyvalue; track item.key) {
+        <div class="kind-pill">{{ item.key }}: {{ item.value }}</div>
       }
-    </div>
+    </section>
 
-    <div class="legend">
-      <span class="legend-title">Legenda:</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#e74c3c"></span>Persona</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#3498db"></span>Luogo</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#f39c12"></span>Desiderio</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#2ecc71"></span>Obiettivo</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#9b59b6"></span>Attivita</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#e91e63"></span>Emozione</span>
-    </div>
+    <section class="node-grid">
+      @for (node of response()!.items; track node.id) {
+        <article class="node-card">
+          <p class="pill">{{ node.kind }}</p>
+          <h3>{{ node.canonicalName }}</h3>
+          @if (node.anchorKey) {
+            <p class="meta">Anchor: {{ node.anchorKey }}</p>
+          }
+          @if (node.aliases.length) {
+            <p class="aliases">{{ node.aliases.join(', ') }}</p>
+          }
+          <p class="meta">
+            {{ node.evidenceCount }} evidenze · aggiornato {{ node.updatedAt | date:'dd MMM yyyy, HH:mm' }}
+          </p>
+          <a [routerLink]="['/nodes', node.id]">Apri nodo</a>
+        </article>
+      }
+    </section>
   }
 </div>

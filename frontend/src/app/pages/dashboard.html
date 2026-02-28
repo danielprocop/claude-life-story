@@ -31,6 +31,48 @@
       </div>
     </div>
 
+    <div class="brain-strip">
+      @if (profileLoading()) {
+        <article class="card brain-card">
+          <h3>Modello personale</h3>
+          <p class="empty">Aggiornamento contesto in corso...</p>
+        </article>
+      } @else if (profile(); as p) {
+        <article class="card brain-card">
+          <h3>Modello personale</h3>
+          <p class="brain-summary">{{ p.contextSummary }}</p>
+          @if (p.personalitySignals.length) {
+            <div class="brain-tags">
+              @for (signal of p.personalitySignals; track signal.trait) {
+                <span class="brain-tag">{{ signal.trait }} ({{ signal.score }})</span>
+              }
+            </div>
+          }
+          @if (p.currentFocus.length) {
+            <ul class="brain-list">
+              @for (focus of p.currentFocus; track focus) {
+                <li>{{ focus }}</li>
+              }
+            </ul>
+          }
+          <a routerLink="/graph">Apri mappa cognitiva</a>
+        </article>
+
+        <article class="card brain-card">
+          <h3>Prossimi micro-step</h3>
+          @if (p.suggestedMicroSteps.length) {
+            <ul class="brain-list">
+              @for (step of p.suggestedMicroSteps; track step) {
+                <li>{{ step }}</li>
+              }
+            </ul>
+          } @else {
+            <p class="empty">Nessuno step suggerito al momento.</p>
+          }
+        </article>
+      }
+    </div>
+
     <div class="dashboard-grid">
       <div class="card">
         <h3>Energia / Stress (ultimi 14 giorni)</h3>

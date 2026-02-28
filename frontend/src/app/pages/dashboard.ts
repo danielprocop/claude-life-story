@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Api, DashboardResponse } from '../services/api';
+import { Api, DashboardResponse, PersonalModelResponse } from '../services/api';
 
 @Component({
   selector: 'app-dashboard',
@@ -11,7 +11,9 @@ import { Api, DashboardResponse } from '../services/api';
 })
 export class Dashboard implements OnInit {
   data = signal<DashboardResponse | null>(null);
+  profile = signal<PersonalModelResponse | null>(null);
   loading = signal(true);
+  profileLoading = signal(true);
 
   constructor(private api: Api) {}
 
@@ -22,6 +24,14 @@ export class Dashboard implements OnInit {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+
+    this.api.getProfile().subscribe({
+      next: (profile) => {
+        this.profile.set(profile);
+        this.profileLoading.set(false);
+      },
+      error: () => this.profileLoading.set(false),
     });
   }
 

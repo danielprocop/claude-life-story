@@ -11,15 +11,18 @@ public class SearchController : AuthenticatedController
     private readonly IEntryRepository _entryRepository;
     private readonly IConceptRepository _conceptRepository;
     private readonly IGoalItemRepository _goalItemRepository;
+    private readonly ICognitiveGraphService _cognitiveGraphService;
 
     public SearchController(
         IEntryRepository entryRepository,
         IConceptRepository conceptRepository,
-        IGoalItemRepository goalItemRepository)
+        IGoalItemRepository goalItemRepository,
+        ICognitiveGraphService cognitiveGraphService)
     {
         _entryRepository = entryRepository;
         _conceptRepository = conceptRepository;
         _goalItemRepository = goalItemRepository;
+        _cognitiveGraphService = cognitiveGraphService;
     }
 
     [HttpGet]
@@ -28,7 +31,12 @@ public class SearchController : AuthenticatedController
         var query = q?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(query))
         {
-            return Ok(new SearchResponse(query, new List<EntrySearchHit>(), new List<ConceptSearchHit>(), new List<GoalItemSearchHit>()));
+            return Ok(new SearchResponse(
+                query,
+                new List<EntrySearchHit>(),
+                new List<ConceptSearchHit>(),
+                new List<GoalItemSearchHit>(),
+                new List<EntitySearchHit>()));
         }
 
         var userId = GetUserId();
@@ -37,6 +45,7 @@ public class SearchController : AuthenticatedController
         var entries = await _entryRepository.SearchAsync(userId, query, safeLimit);
         var concepts = await _conceptRepository.SearchAsync(userId, query, safeLimit);
         var goalItems = await _goalItemRepository.SearchAsync(userId, query, safeLimit);
+        var nodeSearch = await _cognitiveGraphService.SearchNodesAsync(userId, query, safeLimit, HttpContext.RequestAborted);
 
         return Ok(new SearchResponse(
             query,
@@ -60,7 +69,15 @@ public class SearchController : AuthenticatedController
                 g.Status,
                 g.CreatedAt,
                 g.SubGoals.Count
-            )).ToList()
+            )).ToList(),
+            nodeSearch.Items.Select(node => new EntitySearchHit(
+                node.Id,
+                node.Kind,
+                node.CanonicalName,
+                node.AnchorKey,
+                node.Aliases,
+                node.EvidenceCount,
+                node.UpdatedAt)).ToList()
         ));
     }
 }

@@ -22,6 +22,7 @@ Questa cartella e la fonte principale per:
 - [Deploy Status](e:/development/personal/claude-life-story/docs/operations/deploy-status.md)
 - [Release Runbook](e:/development/personal/claude-life-story/docs/operations/release-runbook.md)
 - [OpenSearch Provisioning](e:/development/personal/claude-life-story/docs/operations/opensearch-provisioning.md)
+- [Data Reset Runbook](e:/development/personal/claude-life-story/docs/operations/data-reset-runbook.md)
 - [Documentation Process](e:/development/personal/claude-life-story/docs/operations/documentation-process.md)
 - [Conversation Log](e:/development/personal/claude-life-story/docs/operations/conversation-log.md)
 

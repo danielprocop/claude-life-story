@@ -15,6 +15,18 @@ public class NodesController : AuthenticatedController
         _cognitiveGraphService = cognitiveGraphService;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<NodeSearchResponse>> Search([FromQuery] string? q, [FromQuery] int limit = 24)
+    {
+        var result = await _cognitiveGraphService.SearchNodesAsync(
+            GetUserId(),
+            q,
+            limit,
+            HttpContext.RequestAborted);
+
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<NodeViewResponse>> Get(Guid id)
     {

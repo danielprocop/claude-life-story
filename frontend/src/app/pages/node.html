@@ -1,0 +1,143 @@
+<section class="node-page">
+  <nav class="back-links">
+    <a routerLink="/search">← Ricerca</a>
+    <a routerLink="/graph">Mappa cognitiva</a>
+  </nav>
+
+  @if (loading()) {
+    <div class="state-card">Caricamento nodo...</div>
+  } @else if (error()) {
+    <div class="state-card error">{{ error() }}</div>
+  } @else if (node(); as n) {
+    <article class="node-card">
+      <header class="node-header">
+        <div>
+          <p class="node-kind">{{ n.kind }}</p>
+          <h2>{{ n.canonicalName }}</h2>
+          @if (n.anchorKey) {
+            <p class="node-anchor">Anchor: {{ n.anchorKey }}</p>
+          }
+        </div>
+      </header>
+
+      @if (n.aliases.length) {
+        <section class="section">
+          <h3>Alias</h3>
+          <div class="chip-list">
+            @for (alias of n.aliases; track alias) {
+              <span class="chip">{{ alias }}</span>
+            }
+          </div>
+        </section>
+      }
+
+      @if (n.relations.length) {
+        <section class="section">
+          <h3>Relazioni</h3>
+          <div class="chip-list">
+            @for (relation of n.relations; track relation.type + relation.target) {
+              <span class="chip relation">{{ relation.type }} → {{ relation.target }}</span>
+            }
+          </div>
+        </section>
+      }
+
+      @if (n.person; as person) {
+        <section class="section">
+          <h3>Finanza personale</h3>
+          <div class="stats-grid">
+            <div class="stat">
+              <span class="label">Devo</span>
+              <strong>€ {{ person.openUserOwes }}</strong>
+            </div>
+            <div class="stat">
+              <span class="label">Mi devono</span>
+              <strong>€ {{ person.openOwedToUser }}</strong>
+            </div>
+            <div class="stat">
+              <span class="label">Eventi condivisi</span>
+              <strong>{{ person.sharedEvents.length }}</strong>
+            </div>
+            <div class="stat">
+              <span class="label">Settlement</span>
+              <strong>{{ person.settlements.length }}</strong>
+            </div>
+          </div>
+        </section>
+
+        @if (person.sharedEvents.length) {
+          <section class="section">
+            <h3>Timeline eventi condivisi</h3>
+            <div class="list">
+              @for (item of person.sharedEvents; track item.eventEntityId + item.occurredAt) {
+                <article class="list-item">
+                  <div>
+                    <strong>{{ item.title }}</strong>
+                    <p>{{ item.occurredAt | date:'dd MMM yyyy, HH:mm' }} · {{ item.eventType }}</p>
+                    <p>Totale: € {{ item.eventTotal ?? '-' }} · Mia quota: € {{ item.myShare ?? '-' }}</p>
+                  </div>
+                  <a [routerLink]="['/nodes', item.eventEntityId]">Apri evento</a>
+                </article>
+              }
+            </div>
+          </section>
+        }
+      }
+
+      @if (n.event; as eventView) {
+        <section class="section">
+          <h3>Dettaglio evento</h3>
+          <div class="stats-grid">
+            <div class="stat">
+              <span class="label">Tipo</span>
+              <strong>{{ eventView.eventType }}</strong>
+            </div>
+            <div class="stat">
+              <span class="label">Data</span>
+              <strong>{{ eventView.occurredAt | date:'dd MMM yyyy' }}</strong>
+            </div>
+            <div class="stat">
+              <span class="label">Totale gruppo</span>
+              <strong>€ {{ eventView.eventTotal ?? '-' }}</strong>
+            </div>
+            <div class="stat">
+              <span class="label">Mia quota</span>
+              <strong>€ {{ eventView.myShare ?? '-' }}</strong>
+            </div>
+          </div>
+          @if (eventView.participants.length) {
+            <div class="chip-list">
+              @for (participant of eventView.participants; track participant.entityId) {
+                <a class="chip link" [routerLink]="['/nodes', participant.entityId]">
+                  {{ participant.canonicalName }} ({{ participant.role }})
+                </a>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @if (n.evidence.length) {
+        <section class="section">
+          <h3>Evidence</h3>
+          <div class="list">
+            @for (ev of n.evidence; track ev.entryId + ev.recordedAt + ev.evidenceType) {
+              <article class="list-item">
+                <div>
+                  <p class="meta">
+                    {{ ev.evidenceType }} · {{ ev.recordedAt | date:'dd MMM yyyy, HH:mm' }}
+                    @if (ev.mergeReason) {
+                      · {{ ev.mergeReason }}
+                    }
+                  </p>
+                  <p>{{ ev.snippet }}</p>
+                </div>
+                <a [routerLink]="['/entries', ev.entryId]">Apri entry</a>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    </article>
+  }
+</section>

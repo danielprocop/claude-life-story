@@ -73,6 +73,8 @@ Per eventi finanziari il sistema usa tre concetti distinti:
 
 Il backend espone una `Node View` user-scoped via `GET /api/nodes/{entityId}`.
 
+Per la consultazione generale dei nodi canonici e disponibile anche `GET /api/nodes?q=...&limit=...`.
+
 ### Persona
 
 Restituisce:
@@ -107,6 +109,18 @@ Il modello attuale abilita in modo affidabile:
 - quanto ho speso io vs quanto abbiamo speso in gruppo
 - a chi devo soldi / chi deve soldi a me
 - quali evidence giustificano un merge o un settlement
+- ricerca nodi canonici per nome, alias e anchor (`madre`, `felicia`, `felia`)
+
+## Modello personale utente
+
+Il backend espone `GET /api/profile` per restituire un modello personale user-scoped con:
+
+- contesto compatto aggiornato
+- segnali di personalita derivati dalle entry
+- temi filosofici ricorrenti
+- focus correnti
+- micro-step suggeriti
+- regole di adattamento operativo
 
 ## OpenSearch e Aurora
 
@@ -129,12 +143,15 @@ Gia implementato:
 - merge `Adi(frattello)` su un solo nodo
 - ledger base cena + debito + pagamento successivo
 - `Node View` server-side
+- ricerca nodi canonici (`GET /api/nodes`)
+- modello personale utente (`GET /api/profile`)
 
 Non ancora implementato:
 
 - retrieval reale OpenSearch per candidate search delle entita
 - ranking ibrido testo + vettori sulle `EntityCard`
 - domande active learning quando i dati sono insufficienti
+- projection OpenSearch reale al posto dell'attuale implementazione no-op
 
 ## Reset e rollout
 

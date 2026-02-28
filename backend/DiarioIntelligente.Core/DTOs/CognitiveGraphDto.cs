@@ -12,6 +12,22 @@ public record NodeViewResponse(
     EventNodeViewResponse? Event
 );
 
+public record NodeSearchResponse(
+    string Query,
+    List<NodeSearchItemResponse> Items,
+    int TotalCount
+);
+
+public record NodeSearchItemResponse(
+    Guid Id,
+    string Kind,
+    string CanonicalName,
+    string? AnchorKey,
+    List<string> Aliases,
+    int EvidenceCount,
+    DateTime UpdatedAt
+);
+
 public record NodeRelationResponse(
     string Type,
     string Target

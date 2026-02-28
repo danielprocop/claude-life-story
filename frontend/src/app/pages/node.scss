@@ -1,0 +1,152 @@
+.node-page {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.back-links {
+  display: flex;
+  gap: 14px;
+
+  a {
+    color: #9f4a20;
+    font-weight: 700;
+  }
+}
+
+.state-card,
+.node-card {
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #e4eaf0;
+  box-shadow: 0 16px 32px rgba(20, 33, 48, 0.06);
+}
+
+.state-card {
+  padding: 20px;
+  color: #5b6c7d;
+
+  &.error {
+    color: #9b2c2c;
+  }
+}
+
+.node-card {
+  padding: 24px;
+  display: grid;
+  gap: 22px;
+}
+
+.node-header {
+  h2 {
+    margin: 4px 0;
+    color: #142130;
+  }
+}
+
+.node-kind,
+.node-anchor {
+  color: #5f7183;
+  margin: 0;
+}
+
+.section {
+  display: grid;
+  gap: 10px;
+
+  h3 {
+    margin: 0;
+    color: #142130;
+  }
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  background: #f5f8fb;
+  border: 1px solid #dbe4ec;
+  color: #2d3a46;
+
+  &.relation {
+    background: #f9f5ef;
+    border-color: #efd7c0;
+  }
+
+  &.link {
+    text-decoration: none;
+    color: #9f4a20;
+    font-weight: 700;
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.stat {
+  border-radius: 14px;
+  border: 1px solid #e4eaf0;
+  background: #f8fafc;
+  padding: 10px 12px;
+  display: grid;
+  gap: 3px;
+
+  .label {
+    font-size: 12px;
+    color: #66788a;
+  }
+
+  strong {
+    color: #142130;
+  }
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+}
+
+.list-item {
+  border-radius: 14px;
+  border: 1px solid #e4eaf0;
+  background: #fff;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  p {
+    margin: 4px 0;
+    color: #314254;
+  }
+
+  .meta {
+    font-size: 12px;
+    color: #677a8d;
+  }
+
+  a {
+    align-self: start;
+    color: #9f4a20;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .list-item {
+    flex-direction: column;
+  }
+}

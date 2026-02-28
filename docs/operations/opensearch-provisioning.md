@@ -10,11 +10,12 @@ Provision an OpenSearch resource that can back `EntityCard` indexing and retriev
 
 - `aws opensearch list-versions` returns available versions including `OpenSearch_3.3` and `OpenSearch_2.19`.
 - OpenSearch Serverless endpoint was not reachable from this environment during checks.
-- Domain provisioning has been started and confirmed:
+- Domain `diario-search-dev` is now active:
   - domain: `diario-search-dev`
   - region: `eu-west-1`
   - engine: `OpenSearch_2.19`
-  - status while writing: `Processing=true`, `DomainProcessingStatus=Creating`
+  - status while writing: `Processing=false`, `DomainProcessingStatus=Active`
+  - endpoint: `search-diario-search-dev-a4au7wkolarnygxf7xzyozr7uu.eu-west-1.es.amazonaws.com`
 
 ## Recommended first resource
 
@@ -62,7 +63,7 @@ aws opensearch delete-domain --region eu-west-1 --domain-name diario-search-dev
 
 ## Next integration step
 
-After endpoint is active:
+With endpoint active, next implementation step is:
 
 1. implement real `ISearchProjectionService` with OpenSearch upsert/delete
 2. project `EntityCard` documents for canonical entities

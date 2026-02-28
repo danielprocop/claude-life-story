@@ -24,6 +24,8 @@ Date: 2026-02-28
 - Amplify branch `main` received job `5` with status `SUCCEED`
 - OpenSearch domain provisioning started: `diario-search-dev` (`eu-west-1`, `OpenSearch_2.19`)
 - OpenSearch Serverless is still not reachable from this environment
+- OpenSearch domain `diario-search-dev` is now active and has a reachable endpoint
+- database reset (clean start) executed on PostgreSQL RDS on 2026-02-28 for all application tables
 
 ## What Happens On Push
 

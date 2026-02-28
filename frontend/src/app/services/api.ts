@@ -141,6 +141,25 @@ export interface DashboardResponse {
   recentEntries: EntryListResponse[];
 }
 
+export interface PersonalModelResponse {
+  generatedAt: string;
+  entriesAnalyzed: number;
+  canonicalEntities: number;
+  activeGoals: number;
+  contextSummary: string;
+  personalitySignals: ProfileSignalResponse[];
+  philosophicalThemes: string[];
+  currentFocus: string[];
+  suggestedMicroSteps: string[];
+  adaptationRules: string[];
+}
+
+export interface ProfileSignalResponse {
+  trait: string;
+  score: number;
+  rationale: string;
+}
+
 export interface DashboardStats {
   totalEntries: number;
   totalConcepts: number;
@@ -173,6 +192,7 @@ export interface SearchResponse {
   entries: EntrySearchHit[];
   concepts: ConceptSearchHit[];
   goalItems: GoalItemSearchHit[];
+  entities: EntitySearchHit[];
 }
 
 export interface EntrySearchHit {
@@ -197,6 +217,105 @@ export interface GoalItemSearchHit {
   status: string;
   createdAt: string;
   subGoalCount: number;
+}
+
+export interface EntitySearchHit {
+  id: string;
+  kind: string;
+  canonicalName: string;
+  anchorKey: string | null;
+  aliases: string[];
+  evidenceCount: number;
+  updatedAt: string;
+}
+
+export interface NodeSearchResponse {
+  query: string;
+  items: NodeSearchItemResponse[];
+  totalCount: number;
+}
+
+export interface NodeSearchItemResponse {
+  id: string;
+  kind: string;
+  canonicalName: string;
+  anchorKey: string | null;
+  aliases: string[];
+  evidenceCount: number;
+  updatedAt: string;
+}
+
+export interface NodeViewResponse {
+  id: string;
+  kind: string;
+  canonicalName: string;
+  anchorKey: string | null;
+  aliases: string[];
+  relations: NodeRelationResponse[];
+  evidence: NodeEvidenceResponse[];
+  person: PersonNodeViewResponse | null;
+  event: EventNodeViewResponse | null;
+}
+
+export interface NodeRelationResponse {
+  type: string;
+  target: string;
+}
+
+export interface NodeEvidenceResponse {
+  entryId: string;
+  evidenceType: string;
+  snippet: string;
+  recordedAt: string;
+  mergeReason: string | null;
+}
+
+export interface PersonNodeViewResponse {
+  openUserOwes: number;
+  openOwedToUser: number;
+  sharedEvents: PersonEventSummaryResponse[];
+  settlements: SettlementSummaryResponse[];
+}
+
+export interface PersonEventSummaryResponse {
+  eventEntityId: string;
+  title: string;
+  eventType: string;
+  occurredAt: string;
+  eventTotal: number | null;
+  myShare: number | null;
+}
+
+export interface SettlementSummaryResponse {
+  settlementId: string;
+  direction: string;
+  originalAmount: number;
+  remainingAmount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  eventEntityId: string | null;
+  eventTitle: string | null;
+}
+
+export interface EventNodeViewResponse {
+  eventType: string;
+  title: string;
+  occurredAt: string;
+  eventTotal: number | null;
+  myShare: number | null;
+  currency: string;
+  includesUser: boolean;
+  participants: EventParticipantResponse[];
+  settlements: SettlementSummaryResponse[];
+  sourceEntryId: string;
+}
+
+export interface EventParticipantResponse {
+  entityId: string;
+  canonicalName: string;
+  anchorKey: string | null;
+  role: string;
 }
 
 @Injectable({
@@ -261,6 +380,10 @@ export class Api {
     return this.http.get<DashboardResponse>(`${this.baseUrl}/dashboard`);
   }
 
+  getProfile(): Observable<PersonalModelResponse> {
+    return this.http.get<PersonalModelResponse>(`${this.baseUrl}/profile`);
+  }
+
   getEnergyTrend(days = 30): Observable<EnergyTrendResponse> {
     return this.http.get<EnergyTrendResponse>(`${this.baseUrl}/energy?days=${days}`);
   }
@@ -293,5 +416,14 @@ export class Api {
     return this.http.get<SearchResponse>(
       `${this.baseUrl}/search?q=${encodeURIComponent(query)}&limit=${limit}`
     );
+  }
+
+  getNodes(query = '', limit = 24): Observable<NodeSearchResponse> {
+    const encodedQuery = encodeURIComponent(query);
+    return this.http.get<NodeSearchResponse>(`${this.baseUrl}/nodes?q=${encodedQuery}&limit=${limit}`);
+  }
+
+  getNode(id: string): Observable<NodeViewResponse> {
+    return this.http.get<NodeViewResponse>(`${this.baseUrl}/nodes/${id}`);
   }
 }
