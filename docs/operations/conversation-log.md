@@ -108,3 +108,9 @@ Questa conversazione ha consolidato la direzione del progetto.
 - root cause confermata da CloudTrail: AccessDenied su resource Amplify `.../branches/main/deployments/*`
 - aggiornato il ruolo `GitHubActionsDiarioDeployRole` con permessi su `deployments/*` e `jobs/*`, inclusi `amplify:GetJob` e `amplify:ListJobs`
 - previsto nuovo push per verificare il rilascio completo backend + frontend in un unico workflow
+
+### Aggiornamento successivo
+
+- push di verifica eseguito dopo il fix IAM
+- run GitHub `#13` completato con successo su entrambi i job (`Deploy Backend`, `Deploy Frontend`)
+- frontend deploy automatico confermato via Amplify job `5` in stato `SUCCEED`
