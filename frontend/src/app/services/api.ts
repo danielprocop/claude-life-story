@@ -349,6 +349,15 @@ export interface EventParticipantResponse {
   role: string;
 }
 
+export interface RebuildMemoryResponse {
+  queued: boolean;
+  userId: string;
+}
+
+export interface ReindexEntitiesResponse {
+  reindexed: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -487,5 +496,13 @@ export class Api {
 
   getNode(id: string): Observable<NodeViewResponse> {
     return this.http.get<NodeViewResponse>(`${this.baseUrl}/nodes/${id}`);
+  }
+
+  rebuildMemory(): Observable<RebuildMemoryResponse> {
+    return this.http.post<RebuildMemoryResponse>(`${this.baseUrl}/operations/rebuild/memory`, {});
+  }
+
+  reindexEntities(): Observable<ReindexEntitiesResponse> {
+    return this.http.post<ReindexEntitiesResponse>(`${this.baseUrl}/operations/reindex/entities`, {});
   }
 }

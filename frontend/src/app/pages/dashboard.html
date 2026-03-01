@@ -74,6 +74,21 @@
     </div>
 
     <div class="dashboard-grid">
+      <div class="card full-width operations-card">
+        <h3>Operazioni memoria</h3>
+        <p class="empty">
+          Usa questi comandi quando cambi algoritmo di mapping o vuoi riallineare mappa e retrieval.
+        </p>
+        <div class="ops-actions">
+          <button type="button" (click)="runRebuildMemory()" [disabled]="operationsBusy()">Rebuild Memory</button>
+          <button type="button" (click)="runReindexEntities()" [disabled]="operationsBusy()">Reindex Entities</button>
+          <button type="button" (click)="runRebuildAndReindex()" [disabled]="operationsBusy()">Rebuild + Reindex</button>
+        </div>
+        @if (operationsMessage()) {
+          <p class="ops-status">{{ operationsMessage() }}</p>
+        }
+      </div>
+
       <div class="card">
         <h3>Debiti aperti</h3>
         @if (openDebts().length) {

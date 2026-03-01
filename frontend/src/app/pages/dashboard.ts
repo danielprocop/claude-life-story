@@ -16,6 +16,8 @@ export class Dashboard implements OnInit {
   questions = signal<ClarificationQuestionResponse[]>([]);
   loading = signal(true);
   profileLoading = signal(true);
+  operationsBusy = signal(false);
+  operationsMessage = signal('');
 
   constructor(private api: Api) {}
 
@@ -55,5 +57,66 @@ export class Dashboard implements OnInit {
     if (level <= 3) return '#22c55e';
     if (level <= 6) return '#eab308';
     return '#ef4444';
+  }
+
+  runRebuildMemory(): void {
+    if (this.operationsBusy()) return;
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Rebuild in coda. La memoria verra rigenerata in background.');
+
+    this.api.rebuildMemory().subscribe({
+      next: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Rebuild avviato. Attendi 1-2 minuti e aggiorna la pagina.');
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Errore durante il rebuild. Riprova tra pochi secondi.');
+      },
+    });
+  }
+
+  runReindexEntities(): void {
+    if (this.operationsBusy()) return;
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Reindex in corso...');
+
+    this.api.reindexEntities().subscribe({
+      next: (result) => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set(`Reindex completato: ${result.reindexed} entita indicizzate.`);
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Errore durante il reindex.');
+      },
+    });
+  }
+
+  runRebuildAndReindex(): void {
+    if (this.operationsBusy()) return;
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Avvio rebuild + reindex...');
+
+    this.api.rebuildMemory().subscribe({
+      next: () => {
+        this.api.reindexEntities().subscribe({
+          next: (result) => {
+            this.operationsBusy.set(false);
+            this.operationsMessage.set(
+              `Rebuild avviato e reindex completato (${result.reindexed} entita). Aggiorna tra 1-2 minuti.`
+            );
+          },
+          error: () => {
+            this.operationsBusy.set(false);
+            this.operationsMessage.set('Rebuild avviato, ma reindex fallito.');
+          },
+        });
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Impossibile avviare il rebuild.');
+      },
+    });
   }
 }

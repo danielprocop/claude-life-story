@@ -68,6 +68,36 @@
   }
 }
 
+.operations-card {
+  .ops-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 700;
+      background: #142130;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+
+  .ops-status {
+    margin-top: 12px;
+    color: #334455;
+    font-size: 14px;
+  }
+}
+
 .brain-card {
   .brain-summary {
     color: #334455;

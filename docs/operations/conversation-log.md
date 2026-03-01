@@ -167,3 +167,15 @@ Questa conversazione ha consolidato la direzione del progetto.
 - aggiunto endpoint `POST /api/operations/rebuild/memory` per rigenerare la memoria utente con la nuova logica tipi nodo
 - aggiunto test dedicato per validare la creazione multi-tipo dei nodi (`place/project/idea`)
 - suite backend aggiornata a 15 test verdi
+
+### Aggiornamento successivo
+
+- dashboard aggiornata con card `Operazioni memoria` per trigger manuale di:
+  - `Rebuild Memory`
+  - `Reindex Entities`
+  - `Rebuild + Reindex`
+- frontend API client esteso con metodi typed per:
+  - `POST /api/operations/rebuild/memory`
+  - `POST /api/operations/reindex/entities`
+- build frontend (`npm run build`) completata con successo
+- suite backend riconfermata verde (`dotnet test`, 15 test passati)
