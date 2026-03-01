@@ -125,12 +125,32 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         var changedEntities = new List<CanonicalEntity>();
         var roleContext = new Dictionary<string, CanonicalEntity>(StringComparer.OrdinalIgnoreCase);
-        var standalonePlaceMentions = ExtractStandalonePlaceMentions(entry.Content).ToList();
+        var strongPersonNameHints = BuildStrongPersonHints(entry.Content, analysis);
+        var standalonePlaceMentions = ExtractStandalonePlaceMentions(entry.Content)
+            .Where(place =>
+            {
+                var normalized = Normalize(place);
+                if (string.IsNullOrWhiteSpace(normalized))
+                    return false;
+
+                // "a X" can be a person ("a Irina"), not only a place ("a Milano").
+                // If we have strong person signals for X, don't create/strengthen a place node.
+                if (strongPersonNameHints.Contains(normalized))
+                    return false;
+
+                // If the person already exists, avoid creating a cross-kind duplicate place node.
+                if (entities.Any(x =>
+                        x.Kind == "person" &&
+                        (x.NormalizedCanonicalName == normalized || x.Aliases.Any(a => a.NormalizedAlias == normalized))))
+                    return false;
+
+                return true;
+            })
+            .ToList();
         var normalizedStandalonePlaces = standalonePlaceMentions
             .Select(Normalize)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var strongPersonNameHints = BuildStrongPersonHints(entry.Content, analysis);
 
         foreach (var mention in ExtractRoleMentions(entry.Content))
         {
@@ -1404,22 +1424,25 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     {
         var lowered = content.ToLowerInvariant();
         var eventType = EventKeywords.FirstOrDefault(lowered.Contains);
-        var hasFinancialSignal = lowered.Contains("ho speso") ||
-                                 lowered.Contains("abbiamo speso") ||
-                                 lowered.Contains("spesa") ||
-                                 lowered.Contains("devo ") ||
-                                 lowered.Contains("mi deve");
-
-        if (eventType == null && !hasFinancialSignal)
-            return null;
 
         var participants = ExtractParticipants(content, resolvedNames, roleContext).ToList();
+        var settlement = ExtractSettlementSignal(content, participants);
+
         var amounts = AmountRegex.Matches(content)
             .Select(x => ParseDecimal(x.Groups["amount"].Value))
             .ToList();
 
-        var settlement = ExtractSettlementSignal(content, participants);
         var eventTotal = ExtractEventTotal(content) ?? amounts.FirstOrDefault(x => x.HasValue);
+        var hasSpendSignal = lowered.Contains("ho speso") ||
+                             lowered.Contains("abbiamo speso") ||
+                             lowered.Contains("spesa") ||
+                             lowered.Contains("ha pagato") ||
+                             lowered.Contains("pagato");
+
+        var hasFinancialSignal = settlement != null || (eventTotal.HasValue && hasSpendSignal);
+
+        if (eventType == null && !hasFinancialSignal)
+            return null;
         var participantCountIncludingUser = 1 + participants.Count;
         decimal? myShare = null;
 
@@ -2042,6 +2065,15 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     private static bool IsCommonNonNameToken(string token)
     {
         return token.ToLowerInvariant() is
+            "io" or
+            "me" or
+            "tu" or
+            "te" or
+            "lui" or
+            "lei" or
+            "noi" or
+            "voi" or
+            "loro" or
             "oggi" or
             "ieri" or
             "domani" or

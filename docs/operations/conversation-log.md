@@ -373,3 +373,17 @@ Questa conversazione ha consolidato la direzione del progetto.
   - quando mancano importi/settlement il sistema esplicita "dati minimi"
   - aggiunto link diretto a `entry` sorgente in dettaglio evento
 - aggiunta lista movimenti economici come sotto-sezione della relazione, non come card principale del nodo
+
+### Aggiornamento successivo
+
+- aggiunto audit ripetibile "data quality" su Aurora (read-only):
+  - nuovo tool `backend/DiarioIntelligente.OpsCli` (comandi `audit`/`export`)
+  - nuovo script `docs/operations/scripts/audit-data-quality.ps1` per eseguire audit su ambiente AWS
+  - nuovo doc `docs/operations/data-quality-audit.md` con istruzioni operative
+- audit su Aurora `prod` (01 Mar 2026) ha rilevato nodi/derivati incoerenti:
+  - `Entries`: 21, `CanonicalEntities`: 66, `MemoryEvents`: 7, `EventParticipants`: 1, `Settlements`: 0
+  - almeno un nodo `PERSON` creato da pronome/stopword (`lei`)
+  - collisioni cross-kind (stesso normalized name con kind diversi: `person+place`, `organization+place`, `food+object`)
+  - duplicati `event` per la stessa data (`Evento 2026-03-01`) dentro lo stesso utente
+  - eventi `expense` senza importi (`EventTotal/MyShare` null) e senza partecipanti reali
+- output dettagliato salvato localmente in `.runlogs/data-quality/<timestamp>/audit/*` (non committato) per ispezione e debug

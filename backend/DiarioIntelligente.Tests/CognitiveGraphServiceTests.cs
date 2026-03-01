@@ -326,6 +326,26 @@ public class CognitiveGraphServiceTests
         Assert.Contains("team", milanKinds);
     }
 
+    [Fact]
+    public async Task Does_Not_Create_Financial_Event_From_NonMoney_Devo_Sentence()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await fixture.ProcessAsync(user.Id, "Devo dare piu attenzioni a Irina, mia moglie, che dice che parlo poco con lei.");
+
+        await using var db = fixture.CreateDbContext();
+        var eventCount = await db.MemoryEvents.CountAsync(x => x.UserId == user.Id);
+        Assert.Equal(0, eventCount);
+
+        var leiNodes = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.NormalizedCanonicalName == "lei")
+            .Select(x => x.Kind)
+            .ToListAsync();
+
+        Assert.Empty(leiNodes);
+    }
+
     private sealed class TestFixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
