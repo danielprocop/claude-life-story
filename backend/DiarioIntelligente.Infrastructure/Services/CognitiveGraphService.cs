@@ -33,6 +33,54 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         "time",
         "amount"
     };
+    private static readonly HashSet<string> DetailOnlyEntityKinds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "generic",
+        "object",
+        "item",
+        "food",
+        "time",
+        "date",
+        "year",
+        "amount",
+        "duration",
+        "quantity",
+        "unit"
+    };
+    private static readonly HashSet<string> DetailOnlyLabels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "pizza",
+        "pasta",
+        "ore",
+        "ora",
+        "orario",
+        "minuto",
+        "minuti",
+        "secondo",
+        "secondi",
+        "giorno",
+        "giorni",
+        "settimana",
+        "settimane",
+        "mese",
+        "mesi",
+        "anno",
+        "anni"
+    };
+    private static readonly HashSet<string> HiddenOverviewKinds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "generic",
+        "object",
+        "item",
+        "food",
+        "time",
+        "date",
+        "year",
+        "amount",
+        "duration",
+        "quantity",
+        "unit"
+    };
     private static readonly string[] SportsContextHints =
     {
         "giocher",
@@ -117,6 +165,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         CancellationToken cancellationToken = default)
     {
         var ruleset = feedbackRuleset ?? FeedbackPolicyRuleset.Empty(entry.UserId, 0);
+        var topicScopedContent = ExtractPrimaryTopicContent(entry.Content);
+        var topicScopedAnalysis = FilterAnalysisToPrimaryTopic(analysis, topicScopedContent);
         var entities = await _db.CanonicalEntities
             .Where(x => x.UserId == entry.UserId)
             .Include(x => x.Aliases)
@@ -125,8 +175,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         var changedEntities = new List<CanonicalEntity>();
         var roleContext = new Dictionary<string, CanonicalEntity>(StringComparer.OrdinalIgnoreCase);
-        var strongPersonNameHints = BuildStrongPersonHints(entry.Content, analysis);
-        var standalonePlaceMentions = ExtractStandalonePlaceMentions(entry.Content)
+        var strongPersonNameHints = BuildStrongPersonHints(topicScopedContent, topicScopedAnalysis);
+        var standalonePlaceMentions = ExtractStandalonePlaceMentions(topicScopedContent)
             .Where(place =>
             {
                 var normalized = Normalize(place);
@@ -152,7 +202,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var mention in ExtractRoleMentions(entry.Content))
+        foreach (var mention in ExtractRoleMentions(topicScopedContent))
         {
             if (IsBlockedByRules(mention.RawText, "PERSON", ruleset))
                 continue;
@@ -165,7 +215,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             MarkChanged(entity, changedEntities);
         }
 
-        foreach (var binding in ExtractRoleNameBindings(entry.Content))
+        foreach (var binding in ExtractRoleNameBindings(topicScopedContent))
         {
             if (IsBlockedByRules(binding.Name, "PERSON", ruleset))
                 continue;
@@ -179,7 +229,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             MarkChanged(entity, changedEntities);
         }
 
-        foreach (var binding in ExtractParentheticalBindings(entry.Content))
+        foreach (var binding in ExtractParentheticalBindings(topicScopedContent))
         {
             if (IsBlockedByRules(binding.Name, "PERSON", ruleset))
                 continue;
@@ -194,7 +244,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         }
 
         var resolvedNameMentions = new Dictionary<string, CanonicalEntity>(StringComparer.OrdinalIgnoreCase);
-        foreach (var personName in ExtractStandalonePersonMentions(entry.Content, analysis))
+        foreach (var personName in ExtractStandalonePersonMentions(topicScopedContent, topicScopedAnalysis))
         {
             if (IsBlockedByRules(personName, "PERSON", ruleset))
                 continue;
@@ -241,14 +291,14 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         await UpsertNonPersonConceptEntitiesAsync(
             entry.UserId,
             entry,
-            analysis,
+            topicScopedAnalysis,
             entities,
             changedEntities,
             standalonePlaceMentions,
             ruleset,
             cancellationToken);
 
-        var eventSignal = ExtractEventSignal(entry.Content, entry.CreatedAt, analysis, resolvedNameMentions, roleContext);
+        var eventSignal = ExtractEventSignal(topicScopedContent, entry.CreatedAt, topicScopedAnalysis, resolvedNameMentions, roleContext);
         if (eventSignal != null)
         {
             var participants = new List<CanonicalEntity>();
@@ -320,7 +370,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         }
         else
         {
-            var paymentSignal = ExtractPaymentSignal(entry.Content);
+            var paymentSignal = ExtractPaymentSignal(topicScopedContent);
             if (paymentSignal != null)
             {
                 var counterparty = await ResolveOrCreatePersonEntityAsync(
@@ -420,6 +470,18 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             x.Kind != "person" ||
             !string.IsNullOrWhiteSpace(x.AnchorKey) ||
             !placeNormalizedNames.Contains(x.NormalizedCanonicalName));
+
+        if (string.IsNullOrWhiteSpace(normalizedQuery))
+        {
+            filtered = filtered.Where(x => !HiddenOverviewKinds.Contains(x.Kind));
+        }
+        else
+        {
+            filtered = filtered.Where(x =>
+                !HiddenOverviewKinds.Contains(x.Kind) ||
+                x.NormalizedCanonicalName.Contains(normalizedQuery) ||
+                x.Aliases.Any(alias => alias.NormalizedAlias.Contains(normalizedQuery)));
+        }
 
         if (!string.IsNullOrWhiteSpace(normalizedQuery))
         {
@@ -919,6 +981,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 continue;
             if (NonGraphEntityKinds.Contains(kind))
                 continue;
+            if (ShouldSkipDetailNode(kind, concept.Label, entities))
+                continue;
 
             var key = $"{kind}:{concept.Label.Trim()}";
             if (!seen.Add(key))
@@ -962,6 +1026,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 continue;
             if (NonGraphEntityKinds.Contains(kind))
                 continue;
+            if (ShouldSkipDetailNode(kind, goalSignal.Text, entities))
+                continue;
 
             var key = $"{kind}:{goalSignal.Text.Trim()}";
             if (!seen.Add(key))
@@ -996,6 +1062,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 continue;
 
             if (IsBlockedByRules(place, "ANY", ruleset) || IsForcedNonEntity(place, ruleset))
+                continue;
+            if (ShouldSkipDetailNode("place", place, entities))
                 continue;
 
             var entity = await ResolveOrCreateEntityByKindAsync(
@@ -1659,6 +1727,90 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             timestamp = sourceCreatedAtUtc;
 
         return $"{prefix} {timestamp:yyyy-MM-dd HH:mm}";
+    }
+
+    private static bool ShouldSkipDetailNode(string kind, string label, List<CanonicalEntity> entities)
+    {
+        var normalizedKind = Normalize(kind);
+        var normalizedLabel = Normalize(label);
+
+        if (string.IsNullOrWhiteSpace(normalizedLabel))
+            return true;
+
+        if (DetailOnlyLabels.Contains(normalizedLabel))
+            return true;
+
+        if (!DetailOnlyEntityKinds.Contains(normalizedKind))
+            return false;
+
+        var existing = entities.FirstOrDefault(entity =>
+            string.Equals(entity.Kind, normalizedKind, StringComparison.OrdinalIgnoreCase) &&
+            (entity.NormalizedCanonicalName == normalizedLabel ||
+             entity.Aliases.Any(alias => alias.NormalizedAlias == normalizedLabel)));
+
+        if (existing == null)
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(existing.AnchorKey))
+            return false;
+
+        return existing.Evidence.Count < 4;
+    }
+
+    private static string ExtractPrimaryTopicContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return content;
+
+        var segments = Regex.Split(content, @"[.!?\n]+")
+            .Select(segment => segment.Trim())
+            .Where(segment => !string.IsNullOrWhiteSpace(segment))
+            .ToList();
+
+        if (segments.Count <= 1)
+            return content;
+
+        var first = segments[0];
+        if (first.Length >= 18)
+            return first;
+
+        return segments.Count >= 2 ? $"{first} {segments[1]}".Trim() : first;
+    }
+
+    private static AiAnalysisResult FilterAnalysisToPrimaryTopic(AiAnalysisResult analysis, string primaryTopicContent)
+    {
+        if (analysis == null)
+            return new AiAnalysisResult();
+
+        if (string.IsNullOrWhiteSpace(primaryTopicContent))
+            return analysis;
+
+        var normalizedPrimary = Normalize(primaryTopicContent);
+        if (string.IsNullOrWhiteSpace(normalizedPrimary))
+            return analysis;
+
+        static bool IsInScope(string label, string normalizedPrimaryContent)
+        {
+            var normalizedLabel = Normalize(label);
+            if (string.IsNullOrWhiteSpace(normalizedLabel))
+                return false;
+
+            return normalizedPrimaryContent.Contains(normalizedLabel, StringComparison.Ordinal);
+        }
+
+        return new AiAnalysisResult
+        {
+            Emotions = analysis.Emotions.ToList(),
+            EnergyLevel = analysis.EnergyLevel,
+            StressLevel = analysis.StressLevel,
+            GoalCompletions = analysis.GoalCompletions.ToList(),
+            Concepts = analysis.Concepts
+                .Where(concept => !string.IsNullOrWhiteSpace(concept.Label) && IsInScope(concept.Label, normalizedPrimary))
+                .ToList(),
+            GoalSignals = analysis.GoalSignals
+                .Where(signal => !string.IsNullOrWhiteSpace(signal.Text) && IsInScope(signal.Text, normalizedPrimary))
+                .ToList()
+        };
     }
 
     private static string BuildEntityCard(CanonicalEntity entity)

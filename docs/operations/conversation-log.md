@@ -517,5 +517,18 @@ Questa conversazione ha consolidato la direzione del progetto.
   - `AdminFeedbackController` ora intercetta `InvalidOperationException` su:
     - `POST /api/admin/feedback/cases/preview`
     - `POST /api/admin/feedback/cases/apply`
-    - `POST /api/admin/feedback/cases/{id}/revert`
+  - `POST /api/admin/feedback/cases/{id}/revert`
   - risposta ora `400 BadRequest` con payload `{ "error": "..." }` per merge non valido, invece di `500`.
+
+### Aggiornamento successivo
+
+- aggiornato algoritmo di costruzione grafo per ridurre rumore e imporre focus singolo per entry:
+  - nuova logica `primary topic`: quando una entry contiene piu frasi/argomenti, il parser lavora sul segmento primario (prima frase utile) invece di creare nodi da tutto il testo.
+  - filtro analisi AI topic-scoped: `concepts` e `goal signals` fuori dal topic primario non alimentano creazione nodi canonici.
+- riduzione nodi generici/dettaglio:
+  - introdotti `DetailOnlyEntityKinds` e `DetailOnlyLabels` (es. `food/object/generic`, `pizza/pasta/ore`), esclusi dalla creazione canonica salvo segnali forti preesistenti.
+  - overview nodi (`SearchNodes`) ora nasconde i kind dettaglio per default, per evitare mappe cognitive rumorose.
+- test aggiornati:
+  - nuova regression: multi-sentence entry -> usa solo topic primario
+  - nuova regression: no creazione nodi per `pizza/pasta/ore`
+  - suite backend verde: `39/39`.

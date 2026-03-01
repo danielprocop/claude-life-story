@@ -261,7 +261,7 @@ public class CognitiveGraphServiceTests
             ]
         };
 
-        await fixture.ProcessAsync(user.Id, "oggi sono in Milano e penso allo stoicismo", analysis);
+        await fixture.ProcessAsync(user.Id, "oggi sono in Milano, lavoro al progetto Atlas e penso allo stoicismo", analysis);
 
         await using var db = fixture.CreateDbContext();
         var nodes = await db.CanonicalEntities
@@ -272,6 +272,65 @@ public class CognitiveGraphServiceTests
         Assert.Contains(nodes, x => x.CanonicalName == "Milano" && x.Kind == "place");
         Assert.Contains(nodes, x => x.CanonicalName == "Atlas" && x.Kind == "project");
         Assert.Contains(nodes, x => x.CanonicalName == "Stoicismo" && x.Kind == "idea");
+    }
+
+    [Fact]
+    public async Task Uses_Primary_Topic_Only_When_Entry_Contains_Multiple_Sentences()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        var analysis = new AiAnalysisResult
+        {
+            Concepts =
+            [
+                new ExtractedConcept { Label = "Atlas", Type = "project" },
+                new ExtractedConcept { Label = "Palestra", Type = "activity" }
+            ]
+        };
+
+        await fixture.ProcessAsync(
+            user.Id,
+            "Sto lavorando al progetto Atlas con focus totale. Poi sono andato in palestra e ho mangiato pizza.",
+            analysis);
+
+        await using var db = fixture.CreateDbContext();
+        var nodes = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id)
+            .Select(x => new { x.NormalizedCanonicalName, x.Kind })
+            .ToListAsync();
+
+        Assert.Contains(nodes, x => x.NormalizedCanonicalName == "atlas" && x.Kind == "project");
+        Assert.DoesNotContain(nodes, x => x.NormalizedCanonicalName == "palestra");
+    }
+
+    [Fact]
+    public async Task Does_Not_Create_Generic_Detail_Nodes_For_Food_And_Time()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        var analysis = new AiAnalysisResult
+        {
+            Concepts =
+            [
+                new ExtractedConcept { Label = "Pizza", Type = "food" },
+                new ExtractedConcept { Label = "Pasta", Type = "object" },
+                new ExtractedConcept { Label = "Ore", Type = "generic" }
+            ]
+        };
+
+        await fixture.ProcessAsync(user.Id, "Oggi ho mangiato pizza e pasta per ore.", analysis);
+
+        await using var db = fixture.CreateDbContext();
+        var nodes = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id)
+            .Select(x => x.NormalizedCanonicalName)
+            .ToListAsync();
+
+        Assert.DoesNotContain("pizza", nodes);
+        Assert.DoesNotContain("pasta", nodes);
+        Assert.DoesNotContain("ore", nodes);
     }
 
     [Fact]
