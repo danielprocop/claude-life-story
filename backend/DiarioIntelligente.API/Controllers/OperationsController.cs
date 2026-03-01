@@ -100,13 +100,12 @@ public class OperationsController : AuthenticatedController
     }
 
     [HttpPost("reset/me")]
-    public async Task<ActionResult> ResetMyData()
+    public async Task<ActionResult> ResetMyData([FromQuery] bool includeFeedback = true)
     {
         var userId = GetUserId();
         var ct = HttpContext.RequestAborted;
 
-        // Keep feedback policy history by default. This endpoint is meant to wipe "life data"
-        // (entries + derived memory), not admin/dev configuration.
+        // Full user reset for iterative tuning: wipe life data + optional user-scoped feedback artifacts.
         await using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
         await _cognitiveGraphService.ClearUserGraphAsync(userId, ct);
@@ -117,6 +116,7 @@ public class OperationsController : AuthenticatedController
         var deletedEnergyLogs = await _db.EnergyLogs.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
         var deletedClarificationQuestions = await _db.ClarificationQuestions.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
         var deletedPersonalPolicies = await _db.PersonalPolicies.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        var deletedEntryProcessingStates = await _db.EntryProcessingStates.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
 
         // Legacy concept graph (if still present for this user)
         var conceptIds = await _db.Concepts
@@ -137,6 +137,65 @@ public class OperationsController : AuthenticatedController
 
         var deletedConcepts = await _db.Concepts.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
 
+        var deletedFeedbackCases = 0;
+        var deletedFeedbackActions = 0;
+        var deletedFeedbackReplayJobs = 0;
+        var deletedEntityRedirects = 0;
+        var deletedPolicyVersions = 0;
+
+        if (includeFeedback)
+        {
+            var createdCaseIds = await _db.FeedbackCases
+                .Where(x => x.CreatedByUserId == userId)
+                .Select(x => x.Id)
+                .ToListAsync(ct);
+
+            var createdActionIds = createdCaseIds.Count == 0
+                ? new List<Guid>()
+                : await _db.FeedbackActions
+                    .Where(x => createdCaseIds.Contains(x.CaseId))
+                    .Select(x => x.Id)
+                    .ToListAsync(ct);
+
+            var targetedActionIds = await _db.FeedbackActions
+                .Where(x => x.TargetUserId == userId)
+                .Select(x => x.Id)
+                .ToListAsync(ct);
+
+            var actionIdsNeedingRedirectCleanup = createdActionIds
+                .Concat(targetedActionIds)
+                .Distinct()
+                .ToList();
+
+            if (actionIdsNeedingRedirectCleanup.Count > 0)
+            {
+                deletedEntityRedirects = await _db.EntityRedirects
+                    .Where(x => actionIdsNeedingRedirectCleanup.Contains(x.CreatedByActionId))
+                    .ExecuteDeleteAsync(ct);
+            }
+
+            // Remove user-targeted actions regardless of who created the case.
+            deletedFeedbackActions += await _db.FeedbackActions
+                .Where(x => x.TargetUserId == userId)
+                .ExecuteDeleteAsync(ct);
+
+            if (createdCaseIds.Count > 0)
+            {
+                // Remaining actions in these cases are removed by cascade.
+                deletedFeedbackCases = await _db.FeedbackCases
+                    .Where(x => createdCaseIds.Contains(x.Id))
+                    .ExecuteDeleteAsync(ct);
+            }
+
+            deletedFeedbackReplayJobs = await _db.FeedbackReplayJobs
+                .Where(x => x.TargetUserId == userId)
+                .ExecuteDeleteAsync(ct);
+
+            deletedPolicyVersions = await _db.PolicyVersions
+                .Where(x => x.CreatedByUserId == userId)
+                .ExecuteDeleteAsync(ct);
+        }
+
         await transaction.CommitAsync(ct);
 
         await _searchProjectionService.ResetUserAsync(userId, ct);
@@ -151,8 +210,15 @@ public class OperationsController : AuthenticatedController
             deletedEnergyLogs,
             deletedClarificationQuestions,
             deletedPersonalPolicies,
+            deletedEntryProcessingStates,
             deletedConnections,
-            deletedConcepts
+            deletedConcepts,
+            includeFeedback,
+            deletedFeedbackCases,
+            deletedFeedbackActions,
+            deletedFeedbackReplayJobs,
+            deletedEntityRedirects,
+            deletedPolicyVersions
         });
     }
 }

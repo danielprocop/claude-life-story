@@ -17,9 +17,29 @@ Reset all application data and restart from a clean state without dropping schem
 If you only need to restart your own dataset (common during algorithm tuning), prefer the user-scoped reset:
 
 - Dashboard button: **Operazioni memoria -> Reset miei dati**
-- API: `POST /api/operations/reset/me`
+- API: `POST /api/operations/reset/me?includeFeedback=true`
 
-This wipes all entries + derived memory for the authenticated user, without truncating the whole database.
+This wipes entries + derived memory + user-scoped feedback artifacts for the authenticated user, without truncating the whole database.
+
+## Alignment batch (100 entry + feedback loop)
+
+For iterative tuning, run:
+
+```powershell
+pwsh docs/operations/scripts/alignment-loop.ps1 `
+  -ApiBaseUrl "https://<your-api-host>/api" `
+  -AuthToken "<JWT_ACCESS_TOKEN>" `
+  -Count 100 `
+  -MaxLoops 6
+```
+
+What it does:
+- full user reset
+- inserts 100 entries
+- runs `Normalize Entities`
+- reads admin review queue and applies suggested templates
+- repeats until queue stabilizes or `MaxLoops` is reached
+- writes summary to `.runlogs/alignment/<timestamp>/summary.json`
 
 ## Command used
 

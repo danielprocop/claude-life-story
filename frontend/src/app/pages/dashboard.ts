@@ -213,19 +213,19 @@ export class Dashboard implements OnInit {
     if (this.operationsBusy()) return;
 
     const confirmed = window.confirm(
-      'Reset dati: questa operazione elimina TUTTE le tue entry e la memoria derivata. Non e annullabile. Vuoi continuare?'
+      'Reset completo: elimina TUTTE le tue entry, memoria derivata e feedback user-scoped. Non e annullabile. Vuoi continuare?'
     );
     if (!confirmed) return;
 
     this.operationsBusy.set(true);
-    this.operationsMessage.set('Reset dati in corso...');
+    this.operationsMessage.set('Reset completo in corso...');
 
-    this.api.resetMyData().subscribe({
+    this.api.resetMyData(true).subscribe({
       next: (result) => {
         this.operationsBusy.set(false);
         this.searchHealth.set(null);
         this.operationsMessage.set(
-          `Reset completato. Entry eliminate=${result.deletedEntries}, chat=${result.deletedChatMessages}, goals=${result.deletedGoalItems}, insights=${result.deletedInsights}.`
+          `Reset completato. Entry=${result.deletedEntries}, entita legacy=${result.deletedConcepts}, policy personali=${result.deletedPersonalPolicies}, feedback cases=${result.deletedFeedbackCases}, feedback actions=${result.deletedFeedbackActions}, redirects=${result.deletedEntityRedirects}.`
         );
 
         this.loading.set(true);
@@ -255,7 +255,7 @@ export class Dashboard implements OnInit {
       },
       error: () => {
         this.operationsBusy.set(false);
-        this.operationsMessage.set('Reset fallito. Verifica permessi o riprova tra pochi secondi.');
+        this.operationsMessage.set('Reset completo fallito. Verifica permessi o riprova tra pochi secondi.');
       },
     });
   }

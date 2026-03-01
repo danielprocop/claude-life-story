@@ -85,7 +85,7 @@
           <span><strong>Rebuild + Reindex:</strong> heavy, solo dopo cambi profondi ingestione.</span>
           <span><strong>Search Health/Bootstrap:</strong> verifica e crea indici OpenSearch mancanti.</span>
           <span><strong>Cleanup Legacy Feedback:</strong> rimuove vecchie policy entry-level non piu usate.</span>
-          <span><strong>Reset dati:</strong> elimina tutte le tue entry + memoria derivata (riparti da zero).</span>
+          <span><strong>Reset dati:</strong> reset completo utente (entry + memoria + feedback user-scoped).</span>
         </div>
         <div class="ops-actions">
           <button type="button" (click)="runNormalizeEntities()" [disabled]="operationsBusy()">Normalize Entities</button>
@@ -95,7 +95,7 @@
           <button type="button" (click)="runSearchHealth()" [disabled]="operationsBusy()">Search Health</button>
           <button type="button" (click)="runSearchBootstrap()" [disabled]="operationsBusy()">Search Bootstrap</button>
           <button type="button" (click)="runLegacyFeedbackCleanup()" [disabled]="operationsBusy()">Cleanup Legacy Feedback</button>
-          <button type="button" class="danger" (click)="resetMyData()" [disabled]="operationsBusy()">Reset miei dati</button>
+          <button type="button" class="danger" (click)="resetMyData()" [disabled]="operationsBusy()">Reset completo utente</button>
         </div>
         @if (operationsMessage()) {
           <p class="ops-status">{{ operationsMessage() }}</p>

@@ -437,8 +437,15 @@ export interface ResetMyDataResponse {
   deletedEnergyLogs: number;
   deletedClarificationQuestions: number;
   deletedPersonalPolicies: number;
+  deletedEntryProcessingStates: number;
   deletedConnections: number;
   deletedConcepts: number;
+  includeFeedback: boolean;
+  deletedFeedbackCases: number;
+  deletedFeedbackActions: number;
+  deletedFeedbackReplayJobs: number;
+  deletedEntityRedirects: number;
+  deletedPolicyVersions: number;
 }
 
 export interface LegacyFeedbackCleanupResponse {
@@ -771,8 +778,11 @@ export class Api {
     );
   }
 
-  resetMyData(): Observable<ResetMyDataResponse> {
-    return this.http.post<ResetMyDataResponse>(`${this.baseUrl}/operations/reset/me`, {});
+  resetMyData(includeFeedback = true): Observable<ResetMyDataResponse> {
+    return this.http.post<ResetMyDataResponse>(
+      `${this.baseUrl}/operations/reset/me?includeFeedback=${includeFeedback}`,
+      {}
+    );
   }
 
   previewFeedbackCase(request: FeedbackCaseRequest): Observable<FeedbackPreviewResponse> {

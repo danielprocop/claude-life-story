@@ -402,3 +402,21 @@ Questa conversazione ha consolidato la direzione del progetto.
 - estesi i test backend (golden regressions):
   - `lei` non deve creare un nodo `PERSON` anche se l'AI lo etichetta come person
   - `a Irina` non deve creare un nodo `place` quando il nome e un strong person hint
+
+### Aggiornamento successivo
+
+- reset utente reso realmente "clean start":
+  - endpoint `POST /api/operations/reset/me` ora supporta `?includeFeedback=true` (default attivo)
+  - oltre a entry/memoria, pulisce anche artefatti feedback user-scoped:
+    - `FeedbackCases` creati dall'utente
+    - `FeedbackActions` target utente
+    - `EntityRedirects` collegati a quelle action
+    - `FeedbackReplayJobs` target utente
+    - `PolicyVersions` create dall'utente
+    - `EntryProcessingStates` utente
+- dashboard aggiornata:
+  - bottone rinominato **Reset completo utente**
+  - messaggio di esito include contatori feedback/redirect per verificare pulizia reale
+- aggiunto script batch operativo per allineamento:
+  - `docs/operations/scripts/alignment-loop.ps1`
+  - esegue reset completo -> inserimento N entry (default 100) -> normalize -> apply feedback suggeriti da review queue in loop -> summary JSON in `.runlogs/alignment/<timestamp>/summary.json`
