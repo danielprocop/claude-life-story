@@ -129,9 +129,6 @@ public class EntriesController : AuthenticatedController
         var anchorLocal = ToLocalTime(anchorUtc, safeTimezoneOffset);
         var newestBucketStartLocal = GetBucketStartLocal(anchorLocal, safeView);
 
-        if (newestBucketStartLocal > nowBucketStartLocal)
-            newestBucketStartLocal = nowBucketStartLocal;
-
         var oldestBucketStartLocal = AddBuckets(newestBucketStartLocal, safeView, -safeBucketCount + 1);
         var windowEndExclusiveLocal = AddBuckets(newestBucketStartLocal, safeView, 1);
 

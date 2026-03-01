@@ -27,6 +27,8 @@ export class Timeline implements OnInit, AfterViewInit {
   private readonly router = inject(Router);
   @ViewChild('timelineScrollEl') private readonly timelineScrollEl?: ElementRef<HTMLElement>;
   private readonly edgeLoadThresholdPx = 260;
+  private readonly canLoadPrevious = signal(true);
+  private readonly canLoadNext = signal(true);
 
   private readonly viewConfig: Record<TimelineViewMode, { bucketCount: number; entriesPerBucket: number }> = {
     day: { bucketCount: 10, entriesPerBucket: 8 },
@@ -89,6 +91,7 @@ export class Timeline implements OnInit, AfterViewInit {
 
     this.view.set(view);
     this.timeline.set(null);
+    this.resetDirectionalLoadState();
     this.activeRangeLabel.set('');
     this.activeVisibleEntries.set(0);
     this.loadTimeline();
@@ -104,18 +107,17 @@ export class Timeline implements OnInit, AfterViewInit {
 
   scrollTimeline(direction: 'left' | 'right'): void {
     const element = this.timelineScrollEl?.nativeElement;
-    const timeline = this.timeline();
     if (!element) {
       return;
     }
 
-    if (direction === 'left' && element.scrollLeft < 12 && timeline?.hasPrevious) {
+    if (direction === 'left' && element.scrollLeft < 12 && this.canLoadPrevious()) {
       this.loadMore('previous');
       return;
     }
 
     const rightRemaining = element.scrollWidth - element.clientWidth - element.scrollLeft;
-    if (direction === 'right' && rightRemaining < 12 && timeline?.hasNext) {
+    if (direction === 'right' && rightRemaining < 12 && this.canLoadNext()) {
       this.loadMore('next');
       return;
     }
@@ -133,6 +135,7 @@ export class Timeline implements OnInit, AfterViewInit {
   private loadTimeline(cursorUtc?: string): void {
     this.loading.set(true);
     this.error.set('');
+    this.resetDirectionalLoadState();
 
     const config = this.viewConfig[this.view()];
     this.api
@@ -176,14 +179,14 @@ export class Timeline implements OnInit, AfterViewInit {
     }
 
     if (direction === 'previous') {
-      if (this.loadingMorePrevious() || !timeline.hasPrevious) {
+      if (this.loadingMorePrevious() || !this.canLoadPrevious()) {
         return;
       }
       this.loadingMorePrevious.set(true);
     }
     else
     {
-      if (this.loadingMoreNext() || !timeline.hasNext) {
+      if (this.loadingMoreNext() || !this.canLoadNext()) {
         return;
       }
       this.loadingMoreNext.set(true);
@@ -194,6 +197,7 @@ export class Timeline implements OnInit, AfterViewInit {
       : timeline.nextCursorUtc ?? this.deriveCursor(timeline, 'next');
 
     if (!cursor) {
+      this.markDirectionExhausted(direction);
       if (direction === 'previous') this.loadingMorePrevious.set(false);
       else this.loadingMoreNext.set(false);
       return;
@@ -201,6 +205,7 @@ export class Timeline implements OnInit, AfterViewInit {
 
     const beforeScrollWidth = element.scrollWidth;
     const beforeScrollLeft = element.scrollLeft;
+    const beforeBucketCount = timeline.buckets.length;
     const config = this.viewConfig[this.view()];
 
     this.api
@@ -214,6 +219,12 @@ export class Timeline implements OnInit, AfterViewInit {
       .subscribe({
         next: (res) => {
           this.timeline.update((current) => this.mergeTimeline(current, res, direction));
+          const afterBucketCount = this.timeline()?.buckets.length ?? beforeBucketCount;
+          const addedBuckets = Math.max(0, afterBucketCount - beforeBucketCount);
+          if (addedBuckets === 0) {
+            this.markDirectionExhausted(direction);
+          }
+
           requestAnimationFrame(() => {
             if (direction === 'previous') {
               const delta = element.scrollWidth - beforeScrollWidth;
@@ -262,7 +273,6 @@ export class Timeline implements OnInit, AfterViewInit {
 
   private updateScrollButtons(): void {
     const element = this.timelineScrollEl?.nativeElement;
-    const timeline = this.timeline();
     if (!element) {
       this.scrollLeftVisible.set(false);
       this.scrollRightVisible.set(false);
@@ -271,8 +281,8 @@ export class Timeline implements OnInit, AfterViewInit {
 
     const left = element.scrollLeft;
     const rightRemaining = element.scrollWidth - element.clientWidth - left;
-    this.scrollLeftVisible.set(left > 8 || !!timeline?.hasPrevious);
-    this.scrollRightVisible.set(rightRemaining > 8 || !!timeline?.hasNext);
+    this.scrollLeftVisible.set(left > 8 || this.canLoadPrevious());
+    this.scrollRightVisible.set(rightRemaining > 8 || this.canLoadNext());
   }
 
   private updateVisibleWindowMeta(): void {
@@ -338,22 +348,37 @@ export class Timeline implements OnInit, AfterViewInit {
 
   private maybeLoadMoreFromScroll(): void {
     const element = this.timelineScrollEl?.nativeElement;
-    const timeline = this.timeline();
-    if (!element || !timeline || this.loading()) {
+    if (!element || !this.timeline() || this.loading()) {
       return;
     }
 
     const leftGap = element.scrollLeft;
     const rightGap = element.scrollWidth - element.clientWidth - element.scrollLeft;
 
-    if (leftGap < this.edgeLoadThresholdPx && timeline.hasPrevious && !this.loadingMorePrevious()) {
+    if (leftGap < this.edgeLoadThresholdPx && this.canLoadPrevious() && !this.loadingMorePrevious()) {
       this.loadMore('previous');
       return;
     }
 
-    if (rightGap < this.edgeLoadThresholdPx && timeline.hasNext && !this.loadingMoreNext()) {
+    if (rightGap < this.edgeLoadThresholdPx && this.canLoadNext() && !this.loadingMoreNext()) {
       this.loadMore('next');
     }
+  }
+
+  private resetDirectionalLoadState(): void {
+    this.canLoadPrevious.set(true);
+    this.canLoadNext.set(true);
+  }
+
+  private markDirectionExhausted(direction: 'previous' | 'next'): void {
+    if (direction === 'previous') {
+      this.canLoadPrevious.set(false);
+    }
+    else
+    {
+      this.canLoadNext.set(false);
+    }
+    this.updateScrollButtons();
   }
 
   private mergeTimeline(
