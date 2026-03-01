@@ -125,3 +125,17 @@ POST /api/admin/feedback/cases/apply
 - `GET /api/operations/search/health` deve restituire `pingOk=true` in ambiente con OpenSearch attivo
 - `POST /api/operations/search/bootstrap` deve riportare `failedIndices=0` su bootstrap pulito
 - `POST /api/operations/reindex/entities` deve riallineare entity cards user-scoped
+
+### 8) Cognito admin bootstrap
+
+Per assegnare `ADMIN` a tutti gli utenti Cognito esistenti:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File docs/operations/scripts/cognito-add-all-users-to-admin.ps1
+```
+
+Verifica:
+
+```powershell
+aws cognito-idp list-users-in-group --user-pool-id eu-west-1_GUYadoxnL --group-name ADMIN --region eu-west-1
+```

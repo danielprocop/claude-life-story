@@ -353,3 +353,11 @@ Questa conversazione ha consolidato la direzione del progetto.
   - frontend `AuthService.isAdmin`: accesso admin per tutti gli utenti autenticati
   - flag frontend: `environment.admin.allowAllUsers=true`
 - effetto pratico: funzionalita feedback/admin disponibili subito anche per utenti esistenti e nuovi senza gestione Cognito groups
+
+### Aggiornamento successivo
+
+- assegnato gruppo Cognito reale `ADMIN` a tutti gli utenti esistenti del pool `eu-west-1_GUYadoxnL`
+- creato gruppo `ADMIN` (non presente prima) e aggiunti tutti gli utenti confermati correnti
+- aggiunto script operativo riusabile:
+  - `docs/operations/scripts/cognito-add-all-users-to-admin.ps1`
+  - consente bootstrap/riallineamento rapido del gruppo admin da CLI
