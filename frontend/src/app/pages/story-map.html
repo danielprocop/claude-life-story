@@ -1,0 +1,210 @@
+<div class="story-map-page">
+  <header class="story-header">
+    <div>
+      <h2 class="page-title">Story Map</h2>
+      <p class="page-subtitle">
+        Vista narrativa della tua evoluzione: nodi chiave nel tempo e connessioni che guidano la direzione.
+      </p>
+    </div>
+    <button type="button" class="refresh-btn" (click)="reload()" [disabled]="loading()">Aggiorna</button>
+  </header>
+
+  @if (loading()) {
+    <div class="state-card">Costruzione mappa evolutiva in corso...</div>
+  } @else if (error()) {
+    <div class="state-card error">{{ error() }}</div>
+  } @else if (!positionedNodes().length) {
+    <div class="state-card empty">
+      Nessun nodo disponibile nel periodo selezionato. Prova ad allargare il periodo o aggiungi nuove entry.
+    </div>
+  } @else {
+    <section class="kpi-strip">
+      <article class="kpi-card" [attr.data-tone]="directionSummary().tone">
+        <h3>{{ directionSummary().title }}</h3>
+        <p>{{ directionSummary().subtitle }}</p>
+      </article>
+      <article class="kpi-card compact">
+        <span class="kpi-value">{{ directionShare() }}%</span>
+        <span class="kpi-label">Nodi in direzione</span>
+      </article>
+      <article class="kpi-card compact">
+        <span class="kpi-value">{{ positionedNodes().length }}</span>
+        <span class="kpi-label">Nodi visibili</span>
+      </article>
+      <article class="kpi-card compact">
+        <span class="kpi-value">{{ positionedEdges().length }}</span>
+        <span class="kpi-label">Link attivi</span>
+      </article>
+    </section>
+
+    <section class="filter-bar">
+      <div class="filter-group">
+        <span>Periodo</span>
+        <div class="chip-row">
+          @for (option of periodOptions; track option.days) {
+            <button
+              type="button"
+              class="chip"
+              [class.active]="selectedPeriodDays() === option.days"
+              (click)="setPeriod(option.days)">
+              {{ option.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span>Forza legami</span>
+        <div class="chip-row">
+          @for (option of strengthOptions; track option.min) {
+            <button
+              type="button"
+              class="chip"
+              [class.active]="minStrength() === option.min"
+              (click)="setStrength(option.min)">
+              {{ option.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <span>Area</span>
+        <div class="chip-row kind-row">
+          @for (option of kindOptions(); track option.kind) {
+            <button
+              type="button"
+              class="chip"
+              [class.active]="selectedKind() === option.kind"
+              (click)="setKind(option.kind)">
+              {{ option.label }} ({{ option.count }})
+            </button>
+          }
+        </div>
+      </div>
+    </section>
+
+    <div class="story-layout">
+      <section class="canvas-card">
+        <div class="phase-axis">
+          <span>Origini</span>
+          <span>Evoluzione</span>
+          <span>Direzione</span>
+        </div>
+
+        <div class="story-canvas">
+          @for (lane of laneDefinitions(); track lane.kind) {
+            <div class="lane-line" [style.top.%]="lane.yPct"></div>
+            <span class="lane-label" [style.top.%]="lane.yPct">{{ lane.label }} · {{ lane.count }}</span>
+          }
+
+          <svg class="edge-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            @for (edge of positionedEdges(); track edge.key) {
+              <line
+                class="edge-hit"
+                [attr.x1]="edge.x1"
+                [attr.y1]="edge.y1"
+                [attr.x2]="edge.x2"
+                [attr.y2]="edge.y2"
+                (click)="selectEdge(edge.key)" />
+
+              <line
+                class="edge-line"
+                [class.active]="edge.active"
+                [class.strong]="edge.normalizedStrength >= 0.7"
+                [attr.x1]="edge.x1"
+                [attr.y1]="edge.y1"
+                [attr.x2]="edge.x2"
+                [attr.y2]="edge.y2"
+                [attr.stroke-width]="0.7 + edge.normalizedStrength * 1.5" />
+            }
+          </svg>
+
+          @for (node of positionedNodes(); track node.id) {
+            <button
+              type="button"
+              class="story-node"
+              [class.active]="selectedNodeId() === node.id"
+              [class.phase-direction]="node.phase === 'direction'"
+              [style.left.%]="node.xPct"
+              [style.top.%]="node.yPct"
+              (click)="selectNode(node.id)">
+              <span class="node-kind">{{ kindLabel(node.kind) }}</span>
+              <strong>{{ node.label }}</strong>
+              <small>{{ node.entryCount }} entry</small>
+            </button>
+          }
+        </div>
+      </section>
+
+      <aside class="inspector-card">
+        @if (selectedNode()) {
+          <h3>{{ selectedNode()!.label }}</h3>
+          <p class="inspector-meta">
+            {{ kindLabel(selectedNode()!.kind) }} · {{ phaseLabel(selectedNode()!.phase) }}
+          </p>
+          <p class="inspector-meta">
+            Prime tracce {{ selectedNode()!.firstSeenMs | date:'MMM yyyy' }} · Ultime tracce
+            {{ selectedNode()!.lastSeenMs | date:'dd MMM yyyy' }}
+          </p>
+          <p class="inspector-note">
+            Nodo con intensita {{ strengthPercent(selectedNode()!.edgeInfluence) }}%. Mostra come questo tema si
+            collega al resto della tua storia recente.
+          </p>
+
+          <h4>Connessioni dirette</h4>
+          @if (!selectedNodeConnections().length) {
+            <p class="inspector-muted">Nessun collegamento sopra la soglia corrente.</p>
+          } @else {
+            <div class="mini-list">
+              @for (item of selectedNodeConnections(); track item.key) {
+                <button type="button" class="mini-item" (click)="selectEdge(item.key)">
+                  <span>{{ item.otherLabel }}</span>
+                  <small>{{ edgeTypeLabel(item.type) }} · {{ strengthPercent(item.normalizedStrength) }}%</small>
+                </button>
+              }
+            </div>
+          }
+        } @else if (selectedEdge()) {
+          <h3>{{ selectedEdge()!.sourceLabel }} -> {{ selectedEdge()!.targetLabel }}</h3>
+          <p class="inspector-meta">
+            Relazione {{ edgeTypeLabel(selectedEdge()!.type) }} · Forza
+            {{ strengthPercent(selectedEdge()!.normalizedStrength) }}%
+          </p>
+          <p class="inspector-note">
+            Questo link indica una continuita narrativa: quando emerge il nodo di partenza tende a comparire anche
+            quello di arrivo.
+          </p>
+          <button type="button" class="clear-btn" (click)="selectEdge(selectedEdge()!.key)">Deseleziona link</button>
+        } @else {
+          <h3>Panoramica rapida</h3>
+          <p class="inspector-note">
+            Seleziona un nodo o un collegamento per vedere il dettaglio. In questa fase la mappa evidenzia i segnali
+            con maggior impatto nel periodo scelto.
+          </p>
+          <div class="dominant-kinds">
+            @for (lane of dominantKinds(); track lane.kind) {
+              <span>{{ lane.label }} ({{ lane.count }})</span>
+            }
+          </div>
+        }
+
+        <section class="top-links">
+          <h4>Collegamenti chiave</h4>
+          @if (!topConnections().length) {
+            <p class="inspector-muted">Nessun collegamento abbastanza forte con i filtri attuali.</p>
+          } @else {
+            <div class="mini-list">
+              @for (edge of topConnections(); track edge.key) {
+                <button type="button" class="mini-item" (click)="selectEdge(edge.key)">
+                  <span>{{ edge.sourceLabel }} -> {{ edge.targetLabel }}</span>
+                  <small>{{ edgeTypeLabel(edge.type) }} · {{ strengthPercent(edge.normalizedStrength) }}%</small>
+                </button>
+              }
+            </div>
+          }
+        </section>
+      </aside>
+    </div>
+  }
+</div>

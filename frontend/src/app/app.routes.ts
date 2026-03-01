@@ -21,6 +21,7 @@ export const routes: Routes = [
       { path: 'search', loadComponent: () => import('./pages/search').then(m => m.SearchPage) },
       { path: 'nodes/:id', loadComponent: () => import('./pages/node').then(m => m.NodePage) },
       { path: 'timeline', loadComponent: () => import('./pages/timeline').then(m => m.Timeline) },
+      { path: 'story-map', loadComponent: () => import('./pages/story-map').then(m => m.StoryMap) },
       { path: 'graph', loadComponent: () => import('./pages/graph').then(m => m.Graph) },
       { path: 'goals', loadComponent: () => import('./pages/goals').then(m => m.Goals) },
       { path: 'energy', loadComponent: () => import('./pages/energy').then(m => m.Energy) },
