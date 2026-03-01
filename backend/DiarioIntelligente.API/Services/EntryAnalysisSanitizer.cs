@@ -2,8 +2,6 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using DiarioIntelligente.Core.DTOs;
-using DiarioIntelligente.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace DiarioIntelligente.API.Services;
 
@@ -183,31 +181,11 @@ public static class EntryAnalysisSanitizer
         "lamborghini"
     };
 
-    public static async Task<AiAnalysisResult> SanitizeAsync(
-        AppDbContext db,
-        Guid userId,
+    public static Task<AiAnalysisResult> SanitizeAsync(
         string content,
         AiAnalysisResult analysis,
         CancellationToken ct = default)
-    {
-        var rawOverrides = await db.PersonalPolicies
-            .Where(policy =>
-                policy.UserId == userId &&
-                policy.PolicyKey == "entity_kind_override" &&
-                policy.Scope != null &&
-                policy.Scope.StartsWith("name:"))
-            .Select(policy => new { policy.Scope, policy.PolicyValue })
-            .ToListAsync(ct);
-
-        var overridesByName = rawOverrides
-            .Where(item => !string.IsNullOrWhiteSpace(item.Scope) && item.Scope!.Length > 5)
-            .ToDictionary(
-                item => NormalizeToken(item.Scope![5..]),
-                item => NormalizeOverrideKind(item.PolicyValue),
-                StringComparer.OrdinalIgnoreCase);
-
-        return Sanitize(content, analysis, overridesByName);
-    }
+        => Task.FromResult(Sanitize(content, analysis));
 
     public static AiAnalysisResult Sanitize(
         string content,

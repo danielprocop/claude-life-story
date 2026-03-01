@@ -26,20 +26,6 @@ public record RelatedEntryResponse(
     int SharedConceptCount
 );
 
-public record EntryEntityFeedbackRequest(
-    string Label,
-    string ExpectedKind,
-    string? Note
-);
-
-public record EntryEntityFeedbackResponse(
-    Guid EntryId,
-    string Label,
-    string AppliedKind,
-    bool RebuildQueued,
-    string Message
-);
-
 public record TimelineEntryCardResponse(
     Guid Id,
     string ContentPreview,

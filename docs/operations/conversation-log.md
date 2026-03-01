@@ -298,3 +298,13 @@ Questa conversazione ha consolidato la direzione del progetto.
   - aggiunta `concurrency` (`deploy-main`, `cancel-in-progress: true`)
   - step backend `Deploy to App Runner` con wait su operazioni `IN_PROGRESS`
   - retry con backoff su errori transient/busy (`InvalidStateException`/`ConflictException`)
+
+### Aggiornamento successivo
+
+- rimosso definitivamente il feedback entry-level legacy dal backend:
+  - eliminato endpoint `POST /api/entries/{id}/feedback/entity`
+  - eliminati DTO `EntryEntityFeedbackRequest/Response`
+  - eliminato test legacy `EntriesControllerFeedbackTests`
+- rimosso anche l'override legacy `entity_kind_override` nel sanitizer di ingestione:
+  - `EntryAnalysisSanitizer.SanitizeAsync` non legge piu `PersonalPolicies`
+  - la pipeline usa solo il modello feedback admin template-based (`T1..T8`) + ruleset compiler

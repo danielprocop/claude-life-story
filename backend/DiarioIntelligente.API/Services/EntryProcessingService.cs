@@ -103,7 +103,7 @@ public class EntryProcessingService : BackgroundService
         {
             _logger.LogInformation("Analyzing entry {EntryId} with AI", job.EntryId);
             analysis = await aiService.AnalyzeEntryAsync(extractionContent);
-            analysis = await EntryAnalysisSanitizer.SanitizeAsync(db, entry.UserId, content, analysis, ct);
+            analysis = await EntryAnalysisSanitizer.SanitizeAsync(content, analysis, ct);
         }
 
         // Step 3: Update canonical graph and ledger

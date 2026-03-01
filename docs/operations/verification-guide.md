@@ -73,6 +73,7 @@ UI check rapido:
 - apri `/nodes/{entityId}` e usa `Feedback nodo (admin)` con template `T4` o `T5`
 - esegui `Preview impatto`, poi `Apply feedback`
 - verifica aggiornamento in `Audit / Explainability` e in `/feedback-admin`
+- nota: il vecchio endpoint feedback entry-level e stato rimosso; usare solo flow admin/template
 
 1. preview:
 

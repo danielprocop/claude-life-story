@@ -162,7 +162,7 @@ UI raccomandata:
 
 - feedback a livello nodo su pagina `/nodes/:id` (preview/apply template guidati)
 - console admin su `/feedback-admin` (review queue, case history, revert, debug)
-- il vecchio feedback su entry e considerato legacy e non piu usato nel frontend
+- il vecchio endpoint feedback entry-level e stato rimosso: il feedback ufficiale passa solo dai template admin/node-level
 
 Workflow API:
 
