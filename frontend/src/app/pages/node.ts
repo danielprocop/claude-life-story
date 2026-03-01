@@ -5,11 +5,15 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   Api,
   EntityDebugResponse,
+  EventNodeViewResponse,
   FeedbackApplyResponse,
   FeedbackCaseRequest,
   FeedbackPreviewResponse,
   NodeSearchItemResponse,
   NodeViewResponse,
+  PersonEventSummaryResponse,
+  PersonNodeViewResponse,
+  SettlementSummaryResponse,
 } from '../services/api';
 import { AuthService } from '../services/auth';
 
@@ -369,5 +373,37 @@ export class NodePage implements OnInit, OnDestroy {
     };
 
     poll();
+  }
+
+  hasFinancialRelationship(person: PersonNodeViewResponse | null | undefined): boolean {
+    if (!person) {
+      return false;
+    }
+
+    if (person.openUserOwes > 0 || person.openOwedToUser > 0) {
+      return true;
+    }
+
+    return person.settlements.some(item => item.originalAmount > 0 || item.remainingAmount > 0);
+  }
+
+  hasEventAmounts(item: PersonEventSummaryResponse): boolean {
+    return item.eventTotal !== null || item.myShare !== null;
+  }
+
+  hasEventMonetaryData(eventView: EventNodeViewResponse): boolean {
+    return eventView.eventTotal !== null || eventView.myShare !== null || eventView.settlements.length > 0;
+  }
+
+  settlementDirectionLabel(settlement: SettlementSummaryResponse): string {
+    if (settlement.direction === 'user_owes') {
+      return 'Devi';
+    }
+
+    if (settlement.direction === 'owed_to_user') {
+      return 'Ti devono';
+    }
+
+    return 'Movimento';
   }
 }

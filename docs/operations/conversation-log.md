@@ -361,3 +361,15 @@ Questa conversazione ha consolidato la direzione del progetto.
 - aggiunto script operativo riusabile:
   - `docs/operations/scripts/cognito-add-all-users-to-admin.ps1`
   - consente bootstrap/riallineamento rapido del gruppo admin da CLI
+
+### Aggiornamento successivo
+
+- rifattorizzata la pagina nodo per ridurre enfasi finanza e renderla relazione-centrica:
+  - rimossa sezione "Finanza personale" in evidenza
+  - introdotta sezione "Relazione con te" con indicatori contestuali
+  - dettagli economici mostrati solo quando presenti (`> 0` o settlement reali)
+- migliorata presentazione eventi:
+  - eliminati placeholder fuorvianti tipo `€ -`
+  - quando mancano importi/settlement il sistema esplicita "dati minimi"
+  - aggiunto link diretto a `entry` sorgente in dettaglio evento
+- aggiunta lista movimenti economici come sotto-sezione della relazione, non come card principale del nodo

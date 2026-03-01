@@ -305,25 +305,22 @@
 
       @if (n.person; as person) {
         <section class="section">
-          <h3>Finanza personale</h3>
-          <div class="stats-grid">
-            <div class="stat">
-              <span class="label">Devo</span>
-              <strong>€ {{ person.openUserOwes }}</strong>
-            </div>
-            <div class="stat">
-              <span class="label">Mi devono</span>
-              <strong>€ {{ person.openOwedToUser }}</strong>
-            </div>
-            <div class="stat">
-              <span class="label">Eventi condivisi</span>
-              <strong>{{ person.sharedEvents.length }}</strong>
-            </div>
-            <div class="stat">
-              <span class="label">Settlement</span>
-              <strong>{{ person.settlements.length }}</strong>
-            </div>
+          <h3>Relazione con te</h3>
+          <div class="chip-list">
+            <span class="chip relation">Eventi condivisi: {{ person.sharedEvents.length }}</span>
+            <span class="chip relation">Interazioni economiche: {{ person.settlements.length }}</span>
+            @if (person.openUserOwes > 0) {
+              <span class="chip relation">Debito aperto verso questa persona: € {{ person.openUserOwes }}</span>
+            }
+            @if (person.openOwedToUser > 0) {
+              <span class="chip relation">Credito aperto verso questa persona: € {{ person.openOwedToUser }}</span>
+            }
           </div>
+          @if (hasFinancialRelationship(person)) {
+            <p class="hint">
+              Le informazioni economiche sono parte della relazione con questa persona, non del nodo in astratto.
+            </p>
+          }
         </section>
 
         @if (person.sharedEvents.length) {
@@ -335,9 +332,47 @@
                   <div>
                     <strong>{{ item.title }}</strong>
                     <p>{{ item.occurredAt | date:'dd MMM yyyy, HH:mm' }} · {{ item.eventType }}</p>
-                    <p>Totale: € {{ item.eventTotal ?? '-' }} · Mia quota: € {{ item.myShare ?? '-' }}</p>
+                    @if (hasEventAmounts(item)) {
+                      <p>
+                        @if (item.eventTotal !== null) {
+                          Totale evento: € {{ item.eventTotal }}
+                        }
+                        @if (item.eventTotal !== null && item.myShare !== null) {
+                          ·
+                        }
+                        @if (item.myShare !== null) {
+                          Tua quota: € {{ item.myShare }}
+                        }
+                      </p>
+                    } @else {
+                      <p class="meta">Dettagli economici non specificati in questa entry.</p>
+                    }
                   </div>
                   <a [routerLink]="['/nodes', item.eventEntityId]">Apri evento</a>
+                </article>
+              }
+            </div>
+          </section>
+        }
+
+        @if (hasFinancialRelationship(person) && person.settlements.length) {
+          <section class="section">
+            <h3>Movimenti economici nella relazione</h3>
+            <div class="list">
+              @for (settlement of person.settlements; track settlement.settlementId) {
+                <article class="list-item">
+                  <div>
+                    <p class="meta">{{ settlement.createdAt | date:'dd MMM yyyy, HH:mm' }} · {{ settlement.status }}</p>
+                    <p>
+                      {{ settlementDirectionLabel(settlement) }} {{ settlement.remainingAmount }} {{ settlement.currency }}
+                      @if (settlement.remainingAmount !== settlement.originalAmount) {
+                        (originario {{ settlement.originalAmount }} {{ settlement.currency }})
+                      }
+                    </p>
+                  </div>
+                  @if (settlement.eventEntityId) {
+                    <a [routerLink]="['/nodes', settlement.eventEntityId]">Apri evento</a>
+                  }
                 </article>
               }
             </div>
@@ -357,21 +392,59 @@
               <span class="label">Data</span>
               <strong>{{ eventView.occurredAt | date:'dd MMM yyyy' }}</strong>
             </div>
+            @if (eventView.eventTotal !== null) {
+              <div class="stat">
+                <span class="label">Totale gruppo</span>
+                <strong>€ {{ eventView.eventTotal }}</strong>
+              </div>
+            }
+            @if (eventView.myShare !== null) {
+              <div class="stat">
+                <span class="label">Mia quota</span>
+                <strong>€ {{ eventView.myShare }}</strong>
+              </div>
+            }
             <div class="stat">
-              <span class="label">Totale gruppo</span>
-              <strong>€ {{ eventView.eventTotal ?? '-' }}</strong>
-            </div>
-            <div class="stat">
-              <span class="label">Mia quota</span>
-              <strong>€ {{ eventView.myShare ?? '-' }}</strong>
+              <span class="label">Entry sorgente</span>
+              <strong>
+                <a [routerLink]="['/entries', eventView.sourceEntryId]">Apri entry</a>
+              </strong>
             </div>
           </div>
+
+          @if (!hasEventMonetaryData(eventView)) {
+            <p class="hint">
+              Evento registrato con dati minimi: il testo non contiene importi/settlement espliciti.
+            </p>
+          }
+
           @if (eventView.participants.length) {
             <div class="chip-list">
               @for (participant of eventView.participants; track participant.entityId) {
                 <a class="chip link" [routerLink]="['/nodes', participant.entityId]">
                   {{ participant.canonicalName }} ({{ participant.role }})
                 </a>
+              }
+            </div>
+          }
+
+          @if (eventView.settlements.length) {
+            <div class="list">
+              @for (settlement of eventView.settlements; track settlement.settlementId) {
+                <article class="list-item">
+                  <div>
+                    <p class="meta">{{ settlement.createdAt | date:'dd MMM yyyy, HH:mm' }} · {{ settlement.status }}</p>
+                    <p>
+                      {{ settlementDirectionLabel(settlement) }} {{ settlement.remainingAmount }} {{ settlement.currency }}
+                      @if (settlement.remainingAmount !== settlement.originalAmount) {
+                        (originario {{ settlement.originalAmount }} {{ settlement.currency }})
+                      }
+                    </p>
+                  </div>
+                  @if (settlement.eventEntityId) {
+                    <a [routerLink]="['/nodes', settlement.eventEntityId]">Apri evento</a>
+                  }
+                </article>
               }
             </div>
           }
