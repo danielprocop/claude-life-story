@@ -16,6 +16,11 @@
     @if (feedbackStatus()) {
       <article class="card status">{{ feedbackStatus() }}</article>
     }
+    @if (hasReplayFailures()) {
+      <article class="card error">
+        Sono presenti replay job in stato failed. Controlla sezione "Replay jobs" e correggi prima di nuovi apply massivi.
+      </article>
+    }
 
     <article class="card">
       <h3>Policy state</h3>
@@ -129,6 +134,31 @@
         </div>
       } @else {
         <p class="empty">Review queue vuota.</p>
+      }
+    </article>
+
+    <article class="card">
+      <h3>Replay jobs</h3>
+      @if (replayLoading()) {
+        <p class="empty">Caricamento replay jobs...</p>
+      } @else if (replayJobs().length) {
+        <div class="queue-list">
+          @for (job of replayJobs(); track job.id) {
+            <article class="queue-item">
+              <div>
+                <p class="meta">
+                  {{ job.id }} · policy {{ job.policyVersion }} · {{ job.createdAt | date:'dd MMM yyyy, HH:mm' }}
+                </p>
+                <strong>{{ job.status }}</strong>
+                @if (job.error) {
+                  <p>Errore: {{ job.error }}</p>
+                }
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty">Nessun replay job recente.</p>
       }
     </article>
 

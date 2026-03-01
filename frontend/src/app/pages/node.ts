@@ -1,5 +1,5 @@
 import { CommonModule, DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
@@ -11,6 +11,7 @@ import {
   NodeSearchItemResponse,
   NodeViewResponse,
 } from '../services/api';
+import { AuthService } from '../services/auth';
 
 type FeedbackTemplateMode = 'type' | 'alias_add' | 'alias_remove' | 'merge' | 'force_link' | 'block_token';
 
@@ -20,9 +21,10 @@ type FeedbackTemplateMode = 'type' | 'alias_add' | 'alias_remove' | 'merge' | 'f
   templateUrl: './node.html',
   styleUrl: './node.scss',
 })
-export class NodePage implements OnInit {
+export class NodePage implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly api = inject(Api);
+  readonly auth = inject(AuthService);
 
   readonly node = signal<NodeViewResponse | null>(null);
   readonly entityDebug = signal<EntityDebugResponse | null>(null);
@@ -51,8 +53,17 @@ export class NodePage implements OnInit {
   readonly applyLoading = signal(false);
   readonly previewResponse = signal<FeedbackPreviewResponse | null>(null);
   readonly applyResponse = signal<FeedbackApplyResponse | null>(null);
+  readonly replayJobStatus = signal('');
   readonly feedbackError = signal('');
   readonly feedbackSuccess = signal('');
+  private replayPollTimer: ReturnType<typeof setTimeout> | null = null;
+
+  ngOnDestroy(): void {
+    if (this.replayPollTimer) {
+      clearTimeout(this.replayPollTimer);
+      this.replayPollTimer = null;
+    }
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -68,7 +79,9 @@ export class NodePage implements OnInit {
         this.feedbackTypeValue.set(result.kind || 'person');
         this.blockTokenValue.set(result.canonicalName);
         this.loading.set(false);
-        this.loadDebug(result.id);
+        if (this.auth.canAccessAdmin()) {
+          this.loadDebug(result.id);
+        }
       },
       error: () => {
         this.error.set('Impossibile caricare il nodo richiesto.');
@@ -78,6 +91,11 @@ export class NodePage implements OnInit {
   }
 
   loadDebug(entityId?: string): void {
+    if (!this.auth.canAccessAdmin()) {
+      this.debugError.set('Permesso admin richiesto per il debug feedback.');
+      return;
+    }
+
     const resolvedEntityId = entityId ?? this.node()?.id;
     if (!resolvedEntityId) return;
 
@@ -130,6 +148,11 @@ export class NodePage implements OnInit {
   }
 
   previewFeedback(): void {
+    if (!this.auth.canAccessAdmin()) {
+      this.feedbackError.set('Permesso admin richiesto.');
+      return;
+    }
+
     if (this.previewLoading() || this.applyLoading()) return;
 
     const request = this.buildFeedbackRequest();
@@ -154,6 +177,11 @@ export class NodePage implements OnInit {
   }
 
   applyFeedback(): void {
+    if (!this.auth.canAccessAdmin()) {
+      this.feedbackError.set('Permesso admin richiesto.');
+      return;
+    }
+
     if (this.previewLoading() || this.applyLoading()) return;
 
     const request = this.buildFeedbackRequest();
@@ -170,6 +198,8 @@ export class NodePage implements OnInit {
         this.feedbackSuccess.set(
           `Feedback applicato. Policy v${response.policyVersion}, replay job ${response.replayJob.id}.`
         );
+        this.replayJobStatus.set(`Replay ${response.replayJob.id}: ${response.replayJob.status}`);
+        this.monitorReplayJob(response.replayJob.id);
         this.loadDebug();
       },
       error: () => {
@@ -303,5 +333,41 @@ export class NodePage implements OnInit {
         this.feedbackError.set('Template non supportato.');
         return null;
     }
+  }
+
+  private monitorReplayJob(jobId: string): void {
+    if (!jobId || !this.auth.canAccessAdmin()) {
+      return;
+    }
+
+    if (this.replayPollTimer) {
+      clearTimeout(this.replayPollTimer);
+      this.replayPollTimer = null;
+    }
+
+    const poll = () => {
+      this.api.getFeedbackReplayJobs(undefined, undefined, 20).subscribe({
+        next: jobs => {
+          const target = jobs.find(item => item.id === jobId);
+          if (!target) {
+            return;
+          }
+
+          this.replayJobStatus.set(`Replay ${target.id}: ${target.status}`);
+          const status = target.status.toLowerCase();
+
+          if (status === 'queued' || status === 'running') {
+            this.replayPollTimer = setTimeout(poll, 3000);
+            return;
+          }
+
+          if (status === 'failed') {
+            this.feedbackError.set(`Replay fallito: ${target.error ?? 'errore non specificato'}`);
+          }
+        },
+      });
+    };
+
+    poll();
   }
 }

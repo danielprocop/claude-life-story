@@ -73,6 +73,7 @@ UI check rapido:
 - apri `/nodes/{entityId}` e usa `Feedback nodo (admin)` con template `T4` o `T5`
 - esegui `Preview impatto`, poi `Apply feedback`
 - verifica aggiornamento in `Audit / Explainability` e in `/feedback-admin`
+- verifica stato replay su `Replay jobs` in `/feedback-admin` o via API dedicata
 - nota: il vecchio endpoint feedback entry-level e stato rimosso; usare solo flow admin/template
 
 1. preview:
@@ -111,9 +112,16 @@ POST /api/admin/feedback/cases/apply
 - `GET /api/admin/policy/version`
 - `GET /api/admin/policy/summary?userId=<USER_ID>`
 - `GET /api/admin/review-queue?userId=<USER_ID>`
+- `GET /api/admin/feedback/replay-jobs?userId=<USER_ID>`
 - `GET /api/admin/entities/search?q=inoltre&userId=<USER_ID>`
 - `GET /api/admin/entities/{id}/debug?userId=<USER_ID>`
 
 4. revert:
 
 - `POST /api/admin/feedback/cases/{caseId}/revert`
+
+### 7) OpenSearch operations
+
+- `GET /api/operations/search/health` deve restituire `pingOk=true` in ambiente con OpenSearch attivo
+- `POST /api/operations/search/bootstrap` deve riportare `failedIndices=0` su bootstrap pulito
+- `POST /api/operations/reindex/entities` deve riallineare entity cards user-scoped

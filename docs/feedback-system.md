@@ -161,8 +161,9 @@ Output action:
 UI raccomandata:
 
 - feedback a livello nodo su pagina `/nodes/:id` (preview/apply template guidati)
-- console admin su `/feedback-admin` (review queue, case history, revert, debug)
+- console admin su `/feedback-admin` (review queue, replay jobs, case history, revert, debug)
 - il vecchio endpoint feedback entry-level e stato rimosso: il feedback ufficiale passa solo dai template admin/node-level
+- la route frontend `/feedback-admin` e la navigazione sidebar sono visibili solo a utenti con ruolo `ADMIN/DEV/ANNOTATOR`
 
 Workflow API:
 
@@ -171,6 +172,10 @@ Workflow API:
 3. `POST /api/admin/feedback/cases/apply`
 4. replay job automatico (`feedback_replay_jobs`) + enqueue worker
 5. audit su `GET /api/admin/entities/{id}/debug`
+
+Endpoint replay status:
+
+- `GET /api/admin/feedback/replay-jobs?status=&take=`
 
 ## Esempi rapidi
 

@@ -308,6 +308,50 @@ public class FeedbackSystemTests
         Assert.Contains(debug.RelevantActions, x => x.ActionType == "MERGE_ENTITIES");
     }
 
+    [Fact]
+    public async Task G6_ReplayJobs_Are_Listed_After_Apply()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+        Guid entityId;
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var entity = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "person",
+                CanonicalName = "Test node",
+                NormalizedCanonicalName = "testnode",
+                EntityCard = "Test node"
+            };
+            db.CanonicalEntities.Add(entity);
+            await db.SaveChangesAsync();
+            entityId = entity.Id;
+        }
+
+        var apply = await fixture.ApplyFeedbackAsync(
+            user.Id,
+            new FeedbackCaseApplyRequest(
+                "T4",
+                Json("{" +
+                     $"\"entity_id\":\"{entityId}\"," +
+                     "\"new_type\":\"idea\"," +
+                     "\"reason\":\"queue check\"}"),
+                null,
+                "queue check",
+                null,
+                user.Id,
+                true));
+
+        await using var verifyDb = fixture.CreateDbContext();
+        var admin = fixture.CreateFeedbackAdminService(verifyDb);
+        var jobs = await admin.GetReplayJobsAsync(user.Id, null, 20);
+
+        Assert.Contains(jobs, job => job.Id == apply.ReplayJob.Id);
+    }
+
     private static System.Text.Json.JsonElement Json(string json)
     {
         using var document = System.Text.Json.JsonDocument.Parse(json);

@@ -96,6 +96,15 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
         return GetReviewQueueInternalAsync(userId, take, cancellationToken);
     }
 
+    public Task<List<FeedbackReplayJobItemResponse>> GetReplayJobsAsync(
+        Guid userId,
+        string? status,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        return GetReplayJobsInternalAsync(userId, status, take, cancellationToken);
+    }
+
     public Task<List<NodeSearchItemResponse>> SearchEntitiesAsync(
         Guid userId,
         string query,
@@ -503,6 +512,40 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
     {
         var result = await _cognitiveGraphService.SearchNodesAsync(userId, query, take, cancellationToken);
         return result.Items;
+    }
+
+    private async Task<List<FeedbackReplayJobItemResponse>> GetReplayJobsInternalAsync(
+        Guid userId,
+        string? status,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        var safeTake = Math.Clamp(take, 1, 200);
+        var normalizedStatus = string.IsNullOrWhiteSpace(status)
+            ? null
+            : status.Trim().ToLowerInvariant();
+
+        IQueryable<FeedbackReplayJob> query = _db.FeedbackReplayJobs
+            .Where(x => x.TargetUserId == null || x.TargetUserId == userId);
+
+        if (!string.IsNullOrWhiteSpace(normalizedStatus))
+            query = query.Where(x => x.Status == normalizedStatus);
+
+        return await query
+            .OrderByDescending(x => x.CreatedAt)
+            .Take(safeTake)
+            .Select(x => new FeedbackReplayJobItemResponse(
+                x.Id,
+                x.CreatedAt,
+                x.StartedAt,
+                x.CompletedAt,
+                x.Status,
+                x.PolicyVersion,
+                x.TargetUserId,
+                x.DryRun,
+                x.SummaryJson,
+                x.Error))
+            .ToListAsync(cancellationToken);
     }
 
     private async Task<EntityDebugResponse?> GetEntityDebugInternalAsync(

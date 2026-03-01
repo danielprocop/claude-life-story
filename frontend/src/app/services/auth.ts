@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import { Amplify } from 'aws-amplify';
 import {
   confirmSignUp,
@@ -13,6 +13,7 @@ import { environment } from '../../environments/environment';
 export interface AuthenticatedUser {
   username: string;
   email: string;
+  roles: string[];
 }
 
 export function configureAmplifyAuth(): void {
@@ -40,6 +41,22 @@ export class AuthService {
   readonly user = signal<AuthenticatedUser | null>(null);
   readonly loading = signal(true);
   readonly enabled = environment.auth.enabled;
+  readonly isAdmin = computed(() => {
+    if (!this.enabled) {
+      return true;
+    }
+
+    const current = this.user();
+    if (!current) {
+      return false;
+    }
+
+    if (current.email.toLowerCase() === 'demo@diariointelligente.app') {
+      return true;
+    }
+
+    return current.roles.some(role => role === 'ADMIN' || role === 'DEV' || role === 'ANNOTATOR');
+  });
 
   private initialized = false;
   private initializePromise: Promise<void> | null = null;
@@ -125,6 +142,10 @@ export class AuthService {
     return session.tokens?.idToken?.toString() ?? null;
   }
 
+  canAccessAdmin(): boolean {
+    return this.isAdmin();
+  }
+
   private async loadCurrentUser(): Promise<void> {
     if (!this.enabled) {
       this.user.set(null);
@@ -138,6 +159,7 @@ export class AuthService {
       const currentUser = await getCurrentUser();
       const session = await fetchAuthSession();
       const emailClaim = session.tokens?.idToken?.payload?.['email'];
+      const roles = this.parseRoles(session.tokens?.idToken?.payload);
       const email =
         typeof emailClaim === 'string'
           ? emailClaim
@@ -146,6 +168,7 @@ export class AuthService {
       this.user.set({
         username: currentUser.username,
         email,
+        roles,
       });
     } catch {
       this.user.set(null);
@@ -154,5 +177,33 @@ export class AuthService {
       this.loading.set(false);
       this.initializePromise = null;
     }
+  }
+
+  private parseRoles(payload: Record<string, unknown> | undefined): string[] {
+    if (!payload) {
+      return [];
+    }
+
+    const sources = [payload['cognito:groups'], payload['groups'], payload['role'], payload['roles']];
+    const tokens: string[] = [];
+
+    for (const source of sources) {
+      if (!source) continue;
+
+      if (typeof source === 'string') {
+        tokens.push(...source.split(/[,\s;]+/g).filter(Boolean));
+        continue;
+      }
+
+      if (Array.isArray(source)) {
+        for (const item of source) {
+          if (typeof item === 'string' && item.trim().length > 0) {
+            tokens.push(item.trim());
+          }
+        }
+      }
+    }
+
+    return [...new Set(tokens.map(token => token.trim().toUpperCase()).filter(Boolean))];
   }
 }

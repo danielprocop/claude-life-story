@@ -308,3 +308,29 @@ Questa conversazione ha consolidato la direzione del progetto.
 - rimosso anche l'override legacy `entity_kind_override` nel sanitizer di ingestione:
   - `EntryAnalysisSanitizer.SanitizeAsync` non legge piu `PersonalPolicies`
   - la pipeline usa solo il modello feedback admin template-based (`T1..T8`) + ruleset compiler
+
+### Aggiornamento successivo
+
+- completata hardening admin feedback + operations:
+  - endpoint `GET /api/admin/feedback/replay-jobs` per monitoraggio replay/backfill
+  - UI `/feedback-admin` estesa con sezione `Replay jobs` e warning su job falliti
+  - pagina nodo (`/nodes/:id`) aggiornata con stato replay post-apply
+- controllo accessi frontend rafforzato:
+  - `adminGuard` su route `/feedback-admin`
+  - voce menu `Feedback` visibile solo a ruoli `ADMIN|DEV|ANNOTATOR`
+  - azioni feedback/debug nella node view bloccate per non-admin
+- nuove operation API backend:
+  - `GET /api/operations/search/health`
+  - `POST /api/operations/search/bootstrap`
+  - `POST /api/operations/cleanup/legacy-feedback-policies`
+- introdotti servizi diagnostica search:
+  - `ISearchDiagnosticsService`
+  - `OpenSearchDiagnosticsService` / `NoOpSearchDiagnosticsService`
+- aggiunto workflow GitHub `.github/workflows/deploy-alert.yml`:
+  - su failure del workflow `Deploy to AWS` apre/aggiorna issue automatica (`ci`, `deploy`, `incident`)
+- estesi i test backend:
+  - `EntityNormalizationServiceTests`: blocco merge quando `person` e `EventParticipant`
+  - `FeedbackSystemTests`: verifica presenza replay jobs dopo apply
+- validazione locale:
+  - `dotnet test backend/DiarioIntelligente.sln` verde (31 test)
+  - `npm run build` frontend verde (restano warning budget SCSS non bloccanti)

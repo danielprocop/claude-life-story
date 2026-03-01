@@ -85,3 +85,21 @@ Set env vars sul backend:
 Per rigenerare l'indice entita per l'utente corrente:
 
 `POST /api/operations/reindex/entities`
+
+## Runtime operations API
+
+Per controllo rapido in produzione (senza CLI locale):
+
+- `GET /api/operations/search/health` -> stato ping + presenza indici `entity/entry/goal`
+- `POST /api/operations/search/bootstrap` -> crea automaticamente indici mancanti
+- `POST /api/operations/reindex/entities` -> reindex user-scoped entity cards
+
+## Legacy feedback cleanup
+
+Se servono reset mirati delle vecchie policy entry-level, usare:
+
+- `POST /api/operations/cleanup/legacy-feedback-policies`
+
+Per interventi manuali su DB esiste lo script:
+
+- `docs/operations/scripts/cleanup-legacy-feedback-policies.sql`

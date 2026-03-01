@@ -2,7 +2,9 @@
   <nav class="back-links">
     <a routerLink="/search">← Ricerca</a>
     <a routerLink="/graph">Mappa cognitiva</a>
-    <a routerLink="/feedback-admin">Feedback admin</a>
+    @if (auth.canAccessAdmin()) {
+      <a routerLink="/feedback-admin">Feedback admin</a>
+    }
   </nav>
 
   @if (loading()) {
@@ -21,242 +23,252 @@
         </div>
       </header>
 
-      <section class="section feedback-section">
-        <div class="section-header">
-          <h3>Feedback nodo (admin)</h3>
-          <button type="button" class="secondary-button" (click)="loadDebug()">Aggiorna debug</button>
-        </div>
-        <p class="hint">
-          Correzioni strutturate template-based (preview/apply) sul nodo canonico. Richiede ruolo
-          <strong>ADMIN/DEV/ANNOTATOR</strong>.
-        </p>
-
-        @if (feedbackError()) {
-          <p class="status error">{{ feedbackError() }}</p>
-        }
-        @if (feedbackSuccess()) {
-          <p class="status success">{{ feedbackSuccess() }}</p>
-        }
-
-        <div class="form-grid">
-          <label>
-            Template
-            <select [ngModel]="feedbackMode()" (ngModelChange)="onModeChange($event)">
-              <option value="type">T4 - Change entity type</option>
-              <option value="alias_add">T5 - Add alias</option>
-              <option value="alias_remove">T5 - Remove alias</option>
-              <option value="merge">T3 - Merge entities</option>
-              <option value="force_link">T6 - Force link rule</option>
-              <option value="block_token">T1 - Block token global</option>
-            </select>
-          </label>
-          <label>
-            Reason
-            <input
-              type="text"
-              [ngModel]="feedbackReason()"
-              (ngModelChange)="feedbackReason.set($event)"
-              placeholder="Perche applichi questa correzione" />
-          </label>
-        </div>
-
-        @if (feedbackMode() === 'type') {
-          <div class="form-grid">
-            <label>
-              Nuovo tipo
-              <input
-                type="text"
-                [ngModel]="feedbackTypeValue()"
-                (ngModelChange)="feedbackTypeValue.set($event)"
-                placeholder="Es. place, person, goal, idea" />
-            </label>
+      @if (auth.canAccessAdmin()) {
+        <section class="section feedback-section">
+          <div class="section-header">
+            <h3>Feedback nodo (admin)</h3>
+            <button type="button" class="secondary-button" (click)="loadDebug()">Aggiorna debug</button>
           </div>
-        }
+          <p class="hint">
+            Correzioni strutturate template-based (preview/apply) sul nodo canonico. Richiede ruolo
+            <strong>ADMIN/DEV/ANNOTATOR</strong>.
+          </p>
 
-        @if (feedbackMode() === 'alias_add' || feedbackMode() === 'alias_remove') {
+          @if (feedbackError()) {
+            <p class="status error">{{ feedbackError() }}</p>
+          }
+          @if (feedbackSuccess()) {
+            <p class="status success">{{ feedbackSuccess() }}</p>
+          }
+          @if (replayJobStatus()) {
+            <p class="status">{{ replayJobStatus() }}</p>
+          }
+
           <div class="form-grid">
             <label>
-              Alias
-              <input
-                type="text"
-                [ngModel]="aliasValue()"
-                (ngModelChange)="aliasValue.set($event)"
-                placeholder="Es. Felia" />
+              Template
+              <select [ngModel]="feedbackMode()" (ngModelChange)="onModeChange($event)">
+                <option value="type">T4 - Change entity type</option>
+                <option value="alias_add">T5 - Add alias</option>
+                <option value="alias_remove">T5 - Remove alias</option>
+                <option value="merge">T3 - Merge entities</option>
+                <option value="force_link">T6 - Force link rule</option>
+                <option value="block_token">T1 - Block token global</option>
+              </select>
             </label>
-          </div>
-        }
-
-        @if (feedbackMode() === 'merge') {
-          <div class="form-grid">
             <label>
-              Cerca nodo da fondere
+              Reason
               <input
                 type="text"
-                [ngModel]="mergeQuery()"
-                (ngModelChange)="mergeQuery.set($event)"
-                placeholder="Nome nodo"
-                (blur)="searchMergeCandidates()" />
-            </label>
-            <label class="checkbox">
-              <input
-                type="checkbox"
-                [ngModel]="mergeKeepCurrentCanonical()"
-                (ngModelChange)="mergeKeepCurrentCanonical.set($event)" />
-              Mantieni questo nodo come canonical
+                [ngModel]="feedbackReason()"
+                (ngModelChange)="feedbackReason.set($event)"
+                placeholder="Perche applichi questa correzione" />
             </label>
           </div>
 
-          <button type="button" class="secondary-button" (click)="searchMergeCandidates()" [disabled]="mergeSearchLoading()">
-            {{ mergeSearchLoading() ? 'Ricerca...' : 'Cerca candidati' }}
-          </button>
-
-          @if (mergeCandidates().length) {
-            <div class="candidate-list">
-              @for (candidate of mergeCandidates(); track candidate.id) {
-                <button
-                  type="button"
-                  class="candidate-item"
-                  [class.active]="candidate.id === mergeTargetId()"
-                  (click)="selectMergeCandidate(candidate)">
-                  <strong>{{ candidate.canonicalName }}</strong>
-                  <span>{{ candidate.kind }} · {{ candidate.evidenceCount }} evidenze</span>
-                </button>
-              }
+          @if (feedbackMode() === 'type') {
+            <div class="form-grid">
+              <label>
+                Nuovo tipo
+                <input
+                  type="text"
+                  [ngModel]="feedbackTypeValue()"
+                  (ngModelChange)="feedbackTypeValue.set($event)"
+                  placeholder="Es. place, person, goal, idea" />
+              </label>
             </div>
           }
-        }
 
-        @if (feedbackMode() === 'force_link') {
-          <div class="form-grid">
-            <label>
-              Pattern kind
-              <select [ngModel]="forcePatternKind()" (ngModelChange)="forcePatternKind.set($event)">
-                <option value="EXACT">EXACT</option>
-                <option value="NORMALIZED">NORMALIZED</option>
-                <option value="REGEX">REGEX</option>
-              </select>
-            </label>
-            <label>
-              Pattern value
-              <input
-                type="text"
-                [ngModel]="forcePatternValue()"
-                (ngModelChange)="forcePatternValue.set($event)"
-                placeholder="Es. mia madre" />
-            </label>
-            <label>
-              Near tokens (csv, opzionale)
-              <input
-                type="text"
-                [ngModel]="forceNearTokens()"
-                (ngModelChange)="forceNearTokens.set($event)"
-                placeholder="es. mamma,famiglia" />
-            </label>
-            <label>
-              Within chars (opzionale)
-              <input
-                type="number"
-                [ngModel]="forceWithinChars()"
-                (ngModelChange)="forceWithinChars.set($event ? +$event : null)" />
-            </label>
+          @if (feedbackMode() === 'alias_add' || feedbackMode() === 'alias_remove') {
+            <div class="form-grid">
+              <label>
+                Alias
+                <input
+                  type="text"
+                  [ngModel]="aliasValue()"
+                  (ngModelChange)="aliasValue.set($event)"
+                  placeholder="Es. Felia" />
+              </label>
+            </div>
+          }
+
+          @if (feedbackMode() === 'merge') {
+            <div class="form-grid">
+              <label>
+                Cerca nodo da fondere
+                <input
+                  type="text"
+                  [ngModel]="mergeQuery()"
+                  (ngModelChange)="mergeQuery.set($event)"
+                  placeholder="Nome nodo"
+                  (blur)="searchMergeCandidates()" />
+              </label>
+              <label class="checkbox">
+                <input
+                  type="checkbox"
+                  [ngModel]="mergeKeepCurrentCanonical()"
+                  (ngModelChange)="mergeKeepCurrentCanonical.set($event)" />
+                Mantieni questo nodo come canonical
+              </label>
+            </div>
+
+            <button type="button" class="secondary-button" (click)="searchMergeCandidates()" [disabled]="mergeSearchLoading()">
+              {{ mergeSearchLoading() ? 'Ricerca...' : 'Cerca candidati' }}
+            </button>
+
+            @if (mergeCandidates().length) {
+              <div class="candidate-list">
+                @for (candidate of mergeCandidates(); track candidate.id) {
+                  <button
+                    type="button"
+                    class="candidate-item"
+                    [class.active]="candidate.id === mergeTargetId()"
+                    (click)="selectMergeCandidate(candidate)">
+                    <strong>{{ candidate.canonicalName }}</strong>
+                    <span>{{ candidate.kind }} · {{ candidate.evidenceCount }} evidenze</span>
+                  </button>
+                }
+              </div>
+            }
+          }
+
+          @if (feedbackMode() === 'force_link') {
+            <div class="form-grid">
+              <label>
+                Pattern kind
+                <select [ngModel]="forcePatternKind()" (ngModelChange)="forcePatternKind.set($event)">
+                  <option value="EXACT">EXACT</option>
+                  <option value="NORMALIZED">NORMALIZED</option>
+                  <option value="REGEX">REGEX</option>
+                </select>
+              </label>
+              <label>
+                Pattern value
+                <input
+                  type="text"
+                  [ngModel]="forcePatternValue()"
+                  (ngModelChange)="forcePatternValue.set($event)"
+                  placeholder="Es. mia madre" />
+              </label>
+              <label>
+                Near tokens (csv, opzionale)
+                <input
+                  type="text"
+                  [ngModel]="forceNearTokens()"
+                  (ngModelChange)="forceNearTokens.set($event)"
+                  placeholder="es. mamma,famiglia" />
+              </label>
+              <label>
+                Within chars (opzionale)
+                <input
+                  type="number"
+                  [ngModel]="forceWithinChars()"
+                  (ngModelChange)="forceWithinChars.set($event ? +$event : null)" />
+              </label>
+            </div>
+          }
+
+          @if (feedbackMode() === 'block_token') {
+            <div class="form-grid">
+              <label>
+                Token
+                <input
+                  type="text"
+                  [ngModel]="blockTokenValue()"
+                  (ngModelChange)="blockTokenValue.set($event)"
+                  placeholder="Es. inoltre" />
+              </label>
+              <label>
+                Applies to
+                <select [ngModel]="blockAppliesTo()" (ngModelChange)="blockAppliesTo.set($event)">
+                  <option value="ANY">ANY</option>
+                  <option value="PERSON">PERSON</option>
+                  <option value="GOAL">GOAL</option>
+                </select>
+              </label>
+            </div>
+          }
+
+          <div class="actions">
+            <button type="button" class="secondary-button" (click)="previewFeedback()" [disabled]="previewLoading() || applyLoading()">
+              {{ previewLoading() ? 'Preview...' : 'Preview impatto' }}
+            </button>
+            <button type="button" class="primary-button" (click)="applyFeedback()" [disabled]="applyLoading() || previewLoading()">
+              {{ applyLoading() ? 'Apply...' : 'Apply feedback' }}
+            </button>
           </div>
-        }
 
-        @if (feedbackMode() === 'block_token') {
-          <div class="form-grid">
-            <label>
-              Token
-              <input
-                type="text"
-                [ngModel]="blockTokenValue()"
-                (ngModelChange)="blockTokenValue.set($event)"
-                placeholder="Es. inoltre" />
-            </label>
-            <label>
-              Applies to
-              <select [ngModel]="blockAppliesTo()" (ngModelChange)="blockAppliesTo.set($event)">
-                <option value="ANY">ANY</option>
-                <option value="PERSON">PERSON</option>
-                <option value="GOAL">GOAL</option>
-              </select>
-            </label>
-          </div>
-        }
+          @if (previewResponse(); as preview) {
+            <article class="preview-card">
+              <h4>Impact preview</h4>
+              <p>
+                Entita impattate: {{ preview.impactSummary.impactedEntities }} ·
+                Mentions stimate: {{ preview.impactSummary.mentionLinkChangesEstimate }} ·
+                Entries replay: {{ preview.impactSummary.entriesToReplay }}
+              </p>
+              @if (preview.warnings.length) {
+                <div class="chip-list">
+                  @for (warning of preview.warnings; track warning) {
+                    <span class="chip relation">{{ warning }}</span>
+                  }
+                </div>
+              }
+              @if (preview.parsedActions.length) {
+                <div class="list">
+                  @for (action of preview.parsedActions; track action.actionType + action.payloadJson) {
+                    <article class="list-item">
+                      <div>
+                        <p class="meta">{{ action.actionType }} · scope {{ action.scope }}</p>
+                        <p>{{ action.payloadJson }}</p>
+                      </div>
+                    </article>
+                  }
+                </div>
+              }
+            </article>
+          }
+        </section>
 
-        <div class="actions">
-          <button type="button" class="secondary-button" (click)="previewFeedback()" [disabled]="previewLoading() || applyLoading()">
-            {{ previewLoading() ? 'Preview...' : 'Preview impatto' }}
-          </button>
-          <button type="button" class="primary-button" (click)="applyFeedback()" [disabled]="applyLoading() || previewLoading()">
-            {{ applyLoading() ? 'Apply...' : 'Apply feedback' }}
-          </button>
-        </div>
-
-        @if (previewResponse(); as preview) {
-          <article class="preview-card">
-            <h4>Impact preview</h4>
-            <p>
-              Entita impattate: {{ preview.impactSummary.impactedEntities }} ·
-              Mentions stimate: {{ preview.impactSummary.mentionLinkChangesEstimate }} ·
-              Entries replay: {{ preview.impactSummary.entriesToReplay }}
-            </p>
-            @if (preview.warnings.length) {
+        <section class="section">
+          <h3>Audit / Explainability</h3>
+          @if (debugLoading()) {
+            <p class="hint">Caricamento debug...</p>
+          } @else if (debugError()) {
+            <p class="status error">{{ debugError() }}</p>
+          } @else if (entityDebug(); as debug) {
+            <div class="stats-grid">
+              <div class="stat">
+                <span class="label">Canonical ID</span>
+                <strong>{{ debug.canonicalEntityId }}</strong>
+              </div>
+              <div class="stat">
+                <span class="label">Resolution state</span>
+                <strong>{{ debug.resolutionState }}</strong>
+              </div>
+              <div class="stat">
+                <span class="label">Redirect chain</span>
+                <strong>{{ debug.redirectChain.length }}</strong>
+              </div>
+              <div class="stat">
+                <span class="label">Feedback actions</span>
+                <strong>{{ debug.relevantActions.length }}</strong>
+              </div>
+            </div>
+            @if (debug.why.length) {
               <div class="chip-list">
-                @for (warning of preview.warnings; track warning) {
-                  <span class="chip relation">{{ warning }}</span>
+                @for (item of debug.why; track item) {
+                  <span class="chip relation">{{ item }}</span>
                 }
               </div>
             }
-            @if (preview.parsedActions.length) {
-              <div class="list">
-                @for (action of preview.parsedActions; track action.actionType + action.payloadJson) {
-                  <article class="list-item">
-                    <div>
-                      <p class="meta">{{ action.actionType }} · scope {{ action.scope }}</p>
-                      <p>{{ action.payloadJson }}</p>
-                    </div>
-                  </article>
-                }
-              </div>
-            }
-          </article>
-        }
-      </section>
-
-      <section class="section">
-        <h3>Audit / Explainability</h3>
-        @if (debugLoading()) {
-          <p class="hint">Caricamento debug...</p>
-        } @else if (debugError()) {
-          <p class="status error">{{ debugError() }}</p>
-        } @else if (entityDebug(); as debug) {
-          <div class="stats-grid">
-            <div class="stat">
-              <span class="label">Canonical ID</span>
-              <strong>{{ debug.canonicalEntityId }}</strong>
-            </div>
-            <div class="stat">
-              <span class="label">Resolution state</span>
-              <strong>{{ debug.resolutionState }}</strong>
-            </div>
-            <div class="stat">
-              <span class="label">Redirect chain</span>
-              <strong>{{ debug.redirectChain.length }}</strong>
-            </div>
-            <div class="stat">
-              <span class="label">Feedback actions</span>
-              <strong>{{ debug.relevantActions.length }}</strong>
-            </div>
-          </div>
-          @if (debug.why.length) {
-            <div class="chip-list">
-              @for (item of debug.why; track item) {
-                <span class="chip relation">{{ item }}</span>
-              }
-            </div>
           }
-        }
-      </section>
+        </section>
+      } @else {
+        <section class="section">
+          <h3>Feedback nodo</h3>
+          <p class="hint">Disponibile solo per ruoli ADMIN/DEV/ANNOTATOR.</p>
+        </section>
+      }
 
       @if (n.aliases.length) {
         <section class="section">

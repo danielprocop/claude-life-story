@@ -171,6 +171,63 @@ public class EntityNormalizationServiceTests
     }
 
     [Fact]
+    public async Task Normalize_Does_Not_Merge_When_Person_Is_EventParticipant()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var place = CreateEntity(user.Id, "place", "Bressana");
+            var person = CreateEntity(user.Id, "person", "Bressana");
+            var sourceEntry = new Entry
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Content = "cena con Bressana",
+                CreatedAt = DateTime.UtcNow
+            };
+            var eventNode = CreateEntity(user.Id, "event", "Cena Bressana");
+            var memoryEvent = new MemoryEvent
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                EntityId = eventNode.Id,
+                SourceEntryId = sourceEntry.Id,
+                EventType = "dinner",
+                Title = "Cena Bressana",
+                OccurredAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            db.CanonicalEntities.AddRange(place, person, eventNode);
+            db.Entries.Add(sourceEntry);
+            db.MemoryEvents.Add(memoryEvent);
+            db.EventParticipants.Add(new EventParticipant
+            {
+                EventId = memoryEvent.Id,
+                EntityId = person.Id,
+                Role = "participant"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var service = new EntityNormalizationService(
+                db,
+                new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
+                new NullLogger<EntityNormalizationService>());
+
+            var response = await service.NormalizeUserEntitiesAsync(user.Id);
+            Assert.Equal(1, response.Normalized);
+            Assert.Equal(0, response.Merged);
+            Assert.Equal(0, response.Suppressed);
+            Assert.Equal(1, response.Ambiguous);
+        }
+    }
+
+    [Fact]
     public async Task Normalize_Never_Drops_Anchor_Person()
     {
         await using var fixture = await TestFixture.CreateAsync();

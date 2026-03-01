@@ -13,17 +13,20 @@ public class OperationsController : AuthenticatedController
 {
     private readonly AppDbContext _db;
     private readonly ISearchProjectionService _searchProjectionService;
+    private readonly ISearchDiagnosticsService _searchDiagnosticsService;
     private readonly UserMemoryRebuildQueue _rebuildQueue;
     private readonly IEntityNormalizationService _entityNormalizationService;
 
     public OperationsController(
         AppDbContext db,
         ISearchProjectionService searchProjectionService,
+        ISearchDiagnosticsService searchDiagnosticsService,
         UserMemoryRebuildQueue rebuildQueue,
         IEntityNormalizationService entityNormalizationService)
     {
         _db = db;
         _searchProjectionService = searchProjectionService;
+        _searchDiagnosticsService = searchDiagnosticsService;
         _rebuildQueue = rebuildQueue;
         _entityNormalizationService = entityNormalizationService;
     }
@@ -58,5 +61,38 @@ public class OperationsController : AuthenticatedController
     {
         var response = await _entityNormalizationService.NormalizeUserEntitiesAsync(GetUserId(), HttpContext.RequestAborted);
         return Ok(response);
+    }
+
+    [HttpGet("search/health")]
+    public async Task<ActionResult<SearchHealthResponse>> SearchHealth()
+    {
+        var response = await _searchDiagnosticsService.GetHealthAsync(HttpContext.RequestAborted);
+        return Ok(response);
+    }
+
+    [HttpPost("search/bootstrap")]
+    public async Task<ActionResult<SearchBootstrapResponse>> BootstrapSearchIndices()
+    {
+        var response = await _searchDiagnosticsService.BootstrapIndicesAsync(HttpContext.RequestAborted);
+        return Ok(response);
+    }
+
+    [HttpPost("cleanup/legacy-feedback-policies")]
+    public async Task<ActionResult<LegacyFeedbackCleanupResponse>> CleanupLegacyFeedbackPolicies()
+    {
+        var userId = GetUserId();
+        var legacyKeys = new[] { "entity_kind_override", "entity_feedback_note" };
+
+        var stalePolicies = await _db.PersonalPolicies
+            .Where(x => x.UserId == userId && legacyKeys.Contains(x.PolicyKey))
+            .ToListAsync(HttpContext.RequestAborted);
+
+        if (stalePolicies.Count > 0)
+        {
+            _db.PersonalPolicies.RemoveRange(stalePolicies);
+            await _db.SaveChangesAsync(HttpContext.RequestAborted);
+        }
+
+        return Ok(new LegacyFeedbackCleanupResponse(stalePolicies.Count));
     }
 }

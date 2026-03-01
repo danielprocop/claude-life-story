@@ -1,7 +1,14 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Api, ClarificationQuestionResponse, DashboardResponse, OpenDebtResponse, PersonalModelResponse } from '../services/api';
+import {
+  Api,
+  ClarificationQuestionResponse,
+  DashboardResponse,
+  OpenDebtResponse,
+  PersonalModelResponse,
+  SearchHealthResponse,
+} from '../services/api';
 
 @Component({
   selector: 'app-dashboard',
@@ -20,6 +27,7 @@ export class Dashboard implements OnInit {
   profileLoading = signal(true);
   operationsBusy = signal(false);
   operationsMessage = signal('');
+  searchHealth = signal<SearchHealthResponse | null>(null);
 
   constructor(private api: Api) {}
 
@@ -135,6 +143,68 @@ export class Dashboard implements OnInit {
       error: () => {
         this.operationsBusy.set(false);
         this.operationsMessage.set('Impossibile avviare il rebuild.');
+      },
+    });
+  }
+
+  runSearchHealth(): void {
+    if (this.operationsBusy()) return;
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Verifica health OpenSearch in corso...');
+
+    this.api.getSearchHealth().subscribe({
+      next: (health) => {
+        this.searchHealth.set(health);
+        this.operationsBusy.set(false);
+        if (!health.enabled) {
+          this.operationsMessage.set('Search backend disabilitato in questo ambiente.');
+          return;
+        }
+
+        this.operationsMessage.set(
+          `OpenSearch ping=${health.pingOk ? 'ok' : 'ko'} · entity=${health.entityIndexExists} · entry=${health.entryIndexExists} · goal=${health.goalIndexExists}`
+        );
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Errore health check OpenSearch.');
+      },
+    });
+  }
+
+  runSearchBootstrap(): void {
+    if (this.operationsBusy()) return;
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Bootstrap indici OpenSearch in corso...');
+
+    this.api.bootstrapSearchIndices().subscribe({
+      next: (result) => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set(
+          `Bootstrap completato: creati=${result.createdIndices}, esistenti=${result.existingIndices}, falliti=${result.failedIndices}.`
+        );
+        this.runSearchHealth();
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Errore durante bootstrap indici OpenSearch.');
+      },
+    });
+  }
+
+  runLegacyFeedbackCleanup(): void {
+    if (this.operationsBusy()) return;
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Cleanup policy legacy feedback in corso...');
+
+    this.api.cleanupLegacyFeedbackPolicies().subscribe({
+      next: (result) => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set(`Cleanup completato: ${result.deletedPolicies} policy legacy rimosse.`);
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Errore durante cleanup policy legacy.');
       },
     });
   }

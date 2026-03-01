@@ -83,15 +83,26 @@
           <span><strong>Normalize Entities:</strong> fix duplicati place/person senza rebuild completo.</span>
           <span><strong>Reindex Entities:</strong> solo riallineamento indice OpenSearch (light).</span>
           <span><strong>Rebuild + Reindex:</strong> heavy, solo dopo cambi profondi ingestione.</span>
+          <span><strong>Search Health/Bootstrap:</strong> verifica e crea indici OpenSearch mancanti.</span>
+          <span><strong>Cleanup Legacy Feedback:</strong> rimuove vecchie policy entry-level non piu usate.</span>
         </div>
         <div class="ops-actions">
           <button type="button" (click)="runNormalizeEntities()" [disabled]="operationsBusy()">Normalize Entities</button>
           <button type="button" (click)="runRebuildMemory()" [disabled]="operationsBusy()">Rebuild Memory</button>
           <button type="button" (click)="runReindexEntities()" [disabled]="operationsBusy()">Reindex Entities</button>
           <button type="button" (click)="runRebuildAndReindex()" [disabled]="operationsBusy()">Rebuild + Reindex</button>
+          <button type="button" (click)="runSearchHealth()" [disabled]="operationsBusy()">Search Health</button>
+          <button type="button" (click)="runSearchBootstrap()" [disabled]="operationsBusy()">Search Bootstrap</button>
+          <button type="button" (click)="runLegacyFeedbackCleanup()" [disabled]="operationsBusy()">Cleanup Legacy Feedback</button>
         </div>
         @if (operationsMessage()) {
           <p class="ops-status">{{ operationsMessage() }}</p>
+        }
+        @if (searchHealth(); as health) {
+          <p class="ops-status">
+            Search enabled={{ health.enabled }} · ping={{ health.pingOk }} · entityIndex={{ health.entityIndexExists }}
+            · entryIndex={{ health.entryIndexExists }} · goalIndex={{ health.goalIndexExists }}
+          </p>
         }
       </div>
 

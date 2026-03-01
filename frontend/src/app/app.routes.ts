@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { Layout } from './components/layout';
-import { authGuard, guestGuard } from './guards/auth-guard';
+import { adminGuard, authGuard, guestGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
   {
@@ -28,7 +28,7 @@ export const routes: Routes = [
       { path: 'review', loadComponent: () => import('./pages/review').then(m => m.Review) },
       { path: 'insights', loadComponent: () => import('./pages/insights').then(m => m.Insights) },
       { path: 'themes', loadComponent: () => import('./pages/themes').then(m => m.Themes) },
-      { path: 'feedback-admin', loadComponent: () => import('./pages/feedback-admin').then(m => m.FeedbackAdminPage) },
+      { path: 'feedback-admin', canActivate: [adminGuard], loadComponent: () => import('./pages/feedback-admin').then(m => m.FeedbackAdminPage) },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

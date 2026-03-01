@@ -49,11 +49,13 @@ public static class DependencyInjection
             services.AddSingleton<IOpenSearchClient>(_ => OpenSearchClientFactory.Create(searchOptions));
             services.AddScoped<ISearchProjectionService, OpenSearchProjectionService>();
             services.AddScoped<IEntityRetrievalService, OpenSearchEntityRetrievalService>();
+            services.AddScoped<ISearchDiagnosticsService, OpenSearchDiagnosticsService>();
         }
         else
         {
             services.AddScoped<ISearchProjectionService, NoOpSearchProjectionService>();
             services.AddScoped<IEntityRetrievalService, NoOpEntityRetrievalService>();
+            services.AddScoped<ISearchDiagnosticsService, NoOpSearchDiagnosticsService>();
         }
 
         return services;

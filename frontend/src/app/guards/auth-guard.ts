@@ -35,3 +35,16 @@ export const guestGuard: CanActivateFn = async () => {
 
   return true;
 };
+
+export const adminGuard: CanActivateFn = async () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  await auth.initialize();
+
+  if (auth.canAccessAdmin()) {
+    return true;
+  }
+
+  return router.createUrlTree(['/dashboard']);
+};

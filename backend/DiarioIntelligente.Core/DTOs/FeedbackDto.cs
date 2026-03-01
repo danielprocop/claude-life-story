@@ -50,6 +50,19 @@ public record FeedbackReplayJobResponse(
     bool DryRun
 );
 
+public record FeedbackReplayJobItemResponse(
+    Guid Id,
+    DateTime CreatedAt,
+    DateTime? StartedAt,
+    DateTime? CompletedAt,
+    string Status,
+    int PolicyVersion,
+    Guid? TargetUserId,
+    bool DryRun,
+    string? SummaryJson,
+    string? Error
+);
+
 public record FeedbackApplyResponse(
     Guid CaseId,
     int PolicyVersion,

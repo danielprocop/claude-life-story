@@ -80,6 +80,26 @@ public sealed class AdminFeedbackController : AdminAuthenticatedController
         return Ok(response);
     }
 
+    [HttpGet("replay-jobs")]
+    public async Task<ActionResult<List<FeedbackReplayJobItemResponse>>> GetReplayJobs(
+        [FromQuery] Guid? userId = null,
+        [FromQuery] string? status = null,
+        [FromQuery] int take = 50)
+    {
+        var authorizationResult = EnsureAdminRole(out _);
+        if (authorizationResult != null)
+            return authorizationResult;
+
+        var resolvedUserId = userId ?? GetUserId();
+        var response = await _feedbackAdminService.GetReplayJobsAsync(
+            resolvedUserId,
+            status,
+            take,
+            HttpContext.RequestAborted);
+
+        return Ok(response);
+    }
+
     [HttpPost("cases/{id:guid}/revert")]
     public async Task<ActionResult<RevertFeedbackCaseResponse>> RevertCase(Guid id)
     {

@@ -409,6 +409,29 @@ export interface NormalizeEntitiesResponse {
   reindexed: number;
 }
 
+export interface SearchHealthResponse {
+  enabled: boolean;
+  endpoint: string;
+  region: string;
+  pingOk: boolean;
+  entityIndexExists: boolean;
+  entryIndexExists: boolean;
+  goalIndexExists: boolean;
+  error: string | null;
+}
+
+export interface SearchBootstrapResponse {
+  enabled: boolean;
+  createdIndices: number;
+  existingIndices: number;
+  failedIndices: number;
+  messages: string[];
+}
+
+export interface LegacyFeedbackCleanupResponse {
+  deletedPolicies: number;
+}
+
 export interface FeedbackCaseRequest {
   templateId: string;
   templatePayload: Record<string, unknown>;
@@ -445,6 +468,19 @@ export interface FeedbackReplayJobResponse {
   id: string;
   status: string;
   dryRun: boolean;
+}
+
+export interface FeedbackReplayJobItemResponse {
+  id: string;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  status: string;
+  policyVersion: number;
+  targetUserId: string | null;
+  dryRun: boolean;
+  summaryJson: string | null;
+  error: string | null;
 }
 
 export interface FeedbackApplyResponse {
@@ -707,6 +743,21 @@ export class Api {
     return this.http.post<NormalizeEntitiesResponse>(`${this.baseUrl}/operations/normalize/entities`, {});
   }
 
+  getSearchHealth(): Observable<SearchHealthResponse> {
+    return this.http.get<SearchHealthResponse>(`${this.baseUrl}/operations/search/health`);
+  }
+
+  bootstrapSearchIndices(): Observable<SearchBootstrapResponse> {
+    return this.http.post<SearchBootstrapResponse>(`${this.baseUrl}/operations/search/bootstrap`, {});
+  }
+
+  cleanupLegacyFeedbackPolicies(): Observable<LegacyFeedbackCleanupResponse> {
+    return this.http.post<LegacyFeedbackCleanupResponse>(
+      `${this.baseUrl}/operations/cleanup/legacy-feedback-policies`,
+      {}
+    );
+  }
+
   previewFeedbackCase(request: FeedbackCaseRequest): Observable<FeedbackPreviewResponse> {
     return this.http.post<FeedbackPreviewResponse>(`${this.baseUrl}/admin/feedback/cases/preview`, request);
   }
@@ -737,6 +788,13 @@ export class Api {
     const params = [`take=${take}`];
     if (userId) params.push(`userId=${encodeURIComponent(userId)}`);
     return this.http.get<FeedbackReviewQueueItemResponse[]>(`${this.baseUrl}/admin/review-queue?${params.join('&')}`);
+  }
+
+  getFeedbackReplayJobs(status?: string, userId?: string, take = 50): Observable<FeedbackReplayJobItemResponse[]> {
+    const params = [`take=${take}`];
+    if (status) params.push(`status=${encodeURIComponent(status)}`);
+    if (userId) params.push(`userId=${encodeURIComponent(userId)}`);
+    return this.http.get<FeedbackReplayJobItemResponse[]>(`${this.baseUrl}/admin/feedback/replay-jobs?${params.join('&')}`);
   }
 
   adminSearchEntities(query: string, userId?: string, take = 25): Observable<NodeSearchItemResponse[]> {

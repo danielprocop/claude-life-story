@@ -35,6 +35,12 @@ public interface IFeedbackAdminService
         int take,
         CancellationToken cancellationToken = default);
 
+    Task<List<FeedbackReplayJobItemResponse>> GetReplayJobsAsync(
+        Guid userId,
+        string? status,
+        int take,
+        CancellationToken cancellationToken = default);
+
     Task<List<NodeSearchItemResponse>> SearchEntitiesAsync(
         Guid userId,
         string query,
