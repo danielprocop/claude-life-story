@@ -72,11 +72,13 @@ export class Timeline implements OnInit, AfterViewInit {
     this.activeVisibleEntries() > 0 ? this.activeVisibleEntries() : this.totalEntriesLoaded()
   );
   readonly overviewBuckets = computed(() => {
-    const buckets = this.timeline()?.buckets ?? [];
+    const timeline = this.timeline();
+    const buckets = timeline?.buckets ?? [];
     const maxEntries = buckets.reduce((max, bucket) => Math.max(max, bucket.entryCount), 0);
     const scaleMax = Math.max(1, maxEntries);
     const visibleStart = this.visibleBucketStartIndex();
     const visibleEnd = this.visibleBucketEndIndex();
+    const currentStartUtc = timeline?.currentBucketStartUtc ?? null;
 
     return buckets.map((bucket, index) => {
       const scaledHeight = Math.round((bucket.entryCount / scaleMax) * 100);
@@ -87,6 +89,7 @@ export class Timeline implements OnInit, AfterViewInit {
         entryCount: bucket.entryCount,
         heightPercent: bucket.entryCount === 0 ? 16 : Math.max(20, scaledHeight),
         isActive: visibleStart >= 0 && visibleEnd >= 0 && index >= visibleStart && index <= visibleEnd,
+        isCurrent: currentStartUtc === bucket.startUtc,
       };
     });
   });
@@ -168,7 +171,7 @@ export class Timeline implements OnInit, AfterViewInit {
       return;
     }
 
-    const targetLeft = target.offsetLeft - element.clientWidth / 2 + target.clientWidth / 2;
+    const targetLeft = target.offsetLeft - 2;
     const bounded = Math.max(0, Math.min(targetLeft, element.scrollWidth - element.clientWidth));
     element.scrollTo({ left: bounded, behavior: 'smooth' });
     this.updateVisibleWindowMeta();
@@ -176,7 +179,7 @@ export class Timeline implements OnInit, AfterViewInit {
   }
 
   centerOnCurrentPeriod(): void {
-    this.centerCurrentBucket();
+    this.focusCurrentBucket('smooth');
   }
 
   private loadTimeline(cursorUtc?: string): void {
@@ -201,7 +204,7 @@ export class Timeline implements OnInit, AfterViewInit {
           this.loadingMoreNext.set(false);
 
           requestAnimationFrame(() => {
-            this.centerCurrentBucket();
+            this.focusCurrentBucket('auto');
             this.updateScrollButtons();
             this.updateVisibleWindowMeta();
             this.maybeLoadMoreFromScroll();
@@ -294,7 +297,7 @@ export class Timeline implements OnInit, AfterViewInit {
       });
   }
 
-  private centerCurrentBucket(): void {
+  private focusCurrentBucket(behavior: ScrollBehavior): void {
     const element = this.timelineScrollEl?.nativeElement;
     const timeline = this.timeline();
     if (!element || !timeline || timeline.buckets.length === 0) {
@@ -313,9 +316,9 @@ export class Timeline implements OnInit, AfterViewInit {
       return;
     }
 
-    const targetLeft = target.offsetLeft - element.clientWidth / 2 + target.clientWidth / 2;
+    const targetLeft = target.offsetLeft - 2;
     const bounded = Math.max(0, Math.min(targetLeft, element.scrollWidth - element.clientWidth));
-    element.scrollTo({ left: bounded, behavior: 'smooth' });
+    element.scrollTo({ left: bounded, behavior });
   }
 
   private updateScrollButtons(): void {

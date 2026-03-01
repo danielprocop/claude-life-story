@@ -54,6 +54,7 @@
                 type="button"
                 class="overview-bucket"
                 [class.active]="point.isActive"
+                [class.current]="point.isCurrent"
                 [class.empty]="point.entryCount === 0"
                 [attr.aria-label]="'Vai a ' + point.label + ', ' + point.entryCount + ' entry'"
                 [title]="point.label + ' • ' + point.entryCount + ' entry'"
