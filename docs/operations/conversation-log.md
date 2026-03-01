@@ -471,3 +471,23 @@ Questa conversazione ha consolidato la direzione del progetto.
   - `.runlogs/data-quality/20260301-182743/audit/report.md`
   - segnali residui: cross-kind=1, duplicate-within-kind=5, event-like=5, missing-amount-events=3
   - duplicati principali: `Adi` (person), `Evento 2026-03-01` e altri eventi con stesso giorno/titolo normalizzato
+
+### Aggiornamento successivo
+
+- test eseguiti anche sul dataset utente `daniel.procop13@gmail.com` (userId `a215b4e4-d031-7001-4d7a-447de1a8fab1`):
+  - audit user-scoped: `.runlogs/data-quality/20260301-183913` e `.runlogs/data-quality/20260301-184237`
+  - debug sweep su tutti gli entityId del profilo: `.runlogs/node-sweep-daniel/20260301-183911/summary.json` (`debugOk=36`, `debugErrors=0`)
+  - issue emerse: collisioni cross-kind (`Vidrio`, `MDS`, `Pizza`) e coda review con 3 suggerimenti T3 ricorrenti
+- fix applicati nel codice backend (hardening feedback/replay):
+  - `FeedbackAdminService`:
+    - review queue T3 limitata a kind merge-safe (esclude `event` e merge cross-kind)
+    - validazione forte su T3 (`same-kind`, stesso utente, kind supportato)
+    - merge risolve sempre canonical target corrente (evita catene/cicli su redirect)
+    - impact analysis per T3/T4 ora raccoglie `entryIds` da `EntityEvidence` per replay mirato (evita rebuild completo che rigenerava entityId)
+  - `CognitiveGraphService`:
+    - titolo evento reso meno collidente (`yyyy-MM-dd HH:mm`, fallback su `entry.CreatedAt` quando data esplicita senza orario)
+  - `OpsCli`:
+    - fix filtro `--user` su alias/evidence/participants (audit user-scoped ora coerente)
+- test automatici aggiornati:
+  - nuove regression `G7`, `G8`, `G9` in `FeedbackSystemTests`
+  - suite backend verde: `37/37`

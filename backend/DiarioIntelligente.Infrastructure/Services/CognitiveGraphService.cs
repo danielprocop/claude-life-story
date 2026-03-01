@@ -589,7 +589,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             .Include(x => x.Entity)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var title = BuildEventTitle(eventSignal, eventSignal.OccurredAt);
+        var title = BuildEventTitle(eventSignal, eventSignal.OccurredAt, entry.CreatedAt);
         var eventEntity = existingEvent?.Entity
             ?? await CreateEntityAsync(entry.UserId, "event", title, null, entities, cancellationToken);
 
@@ -1643,7 +1643,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         return RoleAnchors.FirstOrDefault(x => x.Aliases.Any(alias => Normalize(alias) == normalized));
     }
 
-    private static string BuildEventTitle(EventSignal signal, DateTime occurredAt)
+    private static string BuildEventTitle(EventSignal signal, DateTime occurredAt, DateTime sourceCreatedAtUtc)
     {
         var prefix = signal.EventType switch
         {
@@ -1654,8 +1654,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             "uscita" => "Uscita",
             _ => "Evento"
         };
+        var timestamp = occurredAt;
+        if (occurredAt.Hour == 0 && occurredAt.Minute == 0 && occurredAt.Second == 0)
+            timestamp = sourceCreatedAtUtc;
 
-        return $"{prefix} {occurredAt:yyyy-MM-dd}";
+        return $"{prefix} {timestamp:yyyy-MM-dd HH:mm}";
     }
 
     private static string BuildEntityCard(CanonicalEntity entity)

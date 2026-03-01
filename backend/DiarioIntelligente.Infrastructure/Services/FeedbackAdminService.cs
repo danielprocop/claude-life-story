@@ -23,6 +23,17 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
         "infatti",
         "comunque"
     };
+    private static readonly HashSet<string> MergeSafeKinds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "person",
+        "goal",
+        "project",
+        "activity",
+        "idea",
+        "problem",
+        "emotion",
+        "object"
+    };
 
     private readonly AppDbContext _db;
     private readonly IFeedbackPolicyService _policyService;
@@ -429,13 +440,19 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
         }
 
         var duplicateGroups = entities
-            .GroupBy(x => x.NormalizedCanonicalName)
-            .Where(group => !string.IsNullOrWhiteSpace(group.Key) && group.Count() > 1)
+            .Where(x =>
+                !string.IsNullOrWhiteSpace(x.NormalizedCanonicalName) &&
+                MergeSafeKinds.Contains(x.Kind))
+            .GroupBy(x => new { x.Kind, x.NormalizedCanonicalName })
+            .Where(group => group.Count() > 1)
             .ToList();
 
         foreach (var group in duplicateGroups)
         {
-            var candidates = group.OrderByDescending(x => x.Evidence.Count).ToList();
+            var candidates = group
+                .OrderByDescending(x => !string.IsNullOrWhiteSpace(x.AnchorKey))
+                .ThenByDescending(x => x.Evidence.Count)
+                .ToList();
             if (candidates.Count < 2)
                 continue;
 
@@ -453,7 +470,7 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
             });
 
             queue.Add(new FeedbackReviewQueueItemResponse(
-                canonical.Kind == "goal" && duplicate.Kind == "goal" ? "DUPLICATE_GOALS" : "DUPLICATE_ENTITIES",
+                canonical.Kind == "goal" ? "DUPLICATE_GOALS" : "DUPLICATE_ENTITIES",
                 "medium",
                 $"Possibile duplicato '{canonical.CanonicalName}'.",
                 new List<Guid> { canonical.Id, duplicate.Id },
@@ -681,6 +698,7 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
 
                 var source = canonicalId == entityAId ? entityBId : entityAId;
                 var target = canonicalId;
+                await ValidateMergeEntitiesAsync(source, target, cancellationToken);
 
                 actions.Add(new FeedbackCompiledAction(
                     "USER",
@@ -861,8 +879,20 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
                 }
                 case "MERGE_ENTITIES":
                 {
-                    TryAddEntityId(payload, "source_id", impactedEntityIds);
-                    TryAddEntityId(payload, "target_id", impactedEntityIds);
+                    var sourceId = ReadGuid(payload, "source_id");
+                    var targetId = ReadGuid(payload, "target_id");
+
+                    if (sourceId.HasValue)
+                    {
+                        impactedEntityIds.Add(sourceId.Value);
+                        await AddEvidenceEntryIdsAsync(sourceId.Value, entryIds, cancellationToken);
+                    }
+
+                    if (targetId.HasValue)
+                    {
+                        impactedEntityIds.Add(targetId.Value);
+                        await AddEvidenceEntryIdsAsync(targetId.Value, entryIds, cancellationToken);
+                    }
                     break;
                 }
                 case "ENTITY_TYPE_CORRECTION":
@@ -871,6 +901,9 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
                 case "FORCE_LINK_RULE":
                 {
                     TryAddEntityId(payload, "entity_id", impactedEntityIds);
+                    var entityId = ReadGuid(payload, "entity_id");
+                    if (entityId.HasValue)
+                        await AddEvidenceEntryIdsAsync(entityId.Value, entryIds, cancellationToken);
 
                     var token = ReadString(payload, "alias_raw", string.Empty);
                     if (string.IsNullOrWhiteSpace(token))
@@ -1047,23 +1080,34 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
         if (sourceId == targetId)
             return;
 
+        var resolvedSourceId = await ResolveCanonicalEntityIdAsync(sourceId, cancellationToken);
+        var resolvedTargetId = await ResolveCanonicalEntityIdAsync(targetId, cancellationToken);
+        if (resolvedSourceId == resolvedTargetId)
+            return;
+
         var source = await _db.CanonicalEntities
-            .Where(x => x.Id == sourceId)
+            .Where(x => x.Id == resolvedSourceId)
             .FirstOrDefaultAsync(cancellationToken);
         var target = await _db.CanonicalEntities
-            .Where(x => x.Id == targetId)
+            .Where(x => x.Id == resolvedTargetId)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (source == null || target == null || source.UserId != target.UserId)
             return;
 
-        var redirect = await _db.EntityRedirects.FirstOrDefaultAsync(x => x.OldEntityId == sourceId, cancellationToken);
+        if (!MergeSafeKinds.Contains(source.Kind) || !MergeSafeKinds.Contains(target.Kind))
+            return;
+
+        if (!string.Equals(source.Kind, target.Kind, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var redirect = await _db.EntityRedirects.FirstOrDefaultAsync(x => x.OldEntityId == source.Id, cancellationToken);
         if (redirect == null)
         {
             _db.EntityRedirects.Add(new EntityRedirect
             {
-                OldEntityId = sourceId,
-                CanonicalEntityId = targetId,
+                OldEntityId = source.Id,
+                CanonicalEntityId = target.Id,
                 CreatedByActionId = actionId,
                 Active = true,
                 CreatedAt = DateTime.UtcNow
@@ -1071,7 +1115,7 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
         }
         else
         {
-            redirect.CanonicalEntityId = targetId;
+            redirect.CanonicalEntityId = target.Id;
             redirect.CreatedByActionId = actionId;
             redirect.Active = true;
         }
@@ -1166,6 +1210,49 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
         return chain;
     }
 
+    private async Task ValidateMergeEntitiesAsync(Guid sourceId, Guid targetId, CancellationToken cancellationToken)
+    {
+        var resolvedSourceId = await ResolveCanonicalEntityIdAsync(sourceId, cancellationToken);
+        var resolvedTargetId = await ResolveCanonicalEntityIdAsync(targetId, cancellationToken);
+        if (resolvedSourceId == resolvedTargetId)
+            return;
+
+        var source = await _db.CanonicalEntities.AsNoTracking().FirstOrDefaultAsync(x => x.Id == resolvedSourceId, cancellationToken);
+        var target = await _db.CanonicalEntities.AsNoTracking().FirstOrDefaultAsync(x => x.Id == resolvedTargetId, cancellationToken);
+
+        if (source == null || target == null)
+            throw new InvalidOperationException("Entita merge non trovata.");
+
+        if (source.UserId != target.UserId)
+            throw new InvalidOperationException("Merge non consentito tra utenti diversi.");
+
+        if (!MergeSafeKinds.Contains(source.Kind) || !MergeSafeKinds.Contains(target.Kind))
+            throw new InvalidOperationException($"Merge non supportato per kind '{source.Kind}'/'{target.Kind}'.");
+
+        if (!string.Equals(source.Kind, target.Kind, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Merge cross-kind non consentito: '{source.Kind}' vs '{target.Kind}'.");
+    }
+
+    private async Task<Guid> ResolveCanonicalEntityIdAsync(Guid entityId, CancellationToken cancellationToken)
+    {
+        var visited = new HashSet<Guid>();
+        var current = entityId;
+
+        while (visited.Add(current))
+        {
+            var redirect = await _db.EntityRedirects
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.OldEntityId == current && x.Active, cancellationToken);
+
+            if (redirect == null)
+                break;
+
+            current = redirect.CanonicalEntityId;
+        }
+
+        return current;
+    }
+
     private static FeedbackParsedActionResponse MapParsedAction(FeedbackCompiledAction action)
         => new(action.Scope, action.TargetUserId, action.ActionType, action.PayloadJson);
 
@@ -1194,6 +1281,20 @@ public sealed class FeedbackAdminService : IFeedbackAdminService
             return false;
         destination.Add(value.Value);
         return true;
+    }
+
+    private async Task AddEvidenceEntryIdsAsync(Guid entityId, HashSet<Guid> entryIds, CancellationToken cancellationToken)
+    {
+        var evidenceEntryIds = await _db.EntityEvidence
+            .Where(x => x.EntityId == entityId)
+            .OrderByDescending(x => x.RecordedAt)
+            .Select(x => x.EntryId)
+            .Distinct()
+            .Take(200)
+            .ToListAsync(cancellationToken);
+
+        foreach (var entryId in evidenceEntryIds)
+            entryIds.Add(entryId);
     }
 
     private static string ReadString(JsonElement payload, string name, string fallback)

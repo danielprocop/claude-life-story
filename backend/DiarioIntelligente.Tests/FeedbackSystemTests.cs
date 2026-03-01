@@ -6,6 +6,7 @@ using DiarioIntelligente.Infrastructure.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 using Xunit;
 
 namespace DiarioIntelligente.Tests;
@@ -350,6 +351,230 @@ public class FeedbackSystemTests
         var jobs = await admin.GetReplayJobsAsync(user.Id, null, 20);
 
         Assert.Contains(jobs, job => job.Id == apply.ReplayJob.Id);
+    }
+
+    [Fact]
+    public async Task G7_ReviewQueue_Does_Not_Suggest_Event_Merge()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+        Guid eventAId;
+        Guid eventBId;
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var eventA = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "event",
+                CanonicalName = "Evento 2026-03-01 10:00",
+                NormalizedCanonicalName = "evento202603011000",
+                EntityCard = "Evento 2026-03-01 10:00"
+            };
+            var eventB = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "event",
+                CanonicalName = "Evento 2026-03-01 10:00",
+                NormalizedCanonicalName = "evento202603011000",
+                EntityCard = "Evento 2026-03-01 10:00"
+            };
+            db.CanonicalEntities.AddRange(eventA, eventB);
+            await db.SaveChangesAsync();
+            eventAId = eventA.Id;
+            eventBId = eventB.Id;
+        }
+
+        await using var verifyDb = fixture.CreateDbContext();
+        var admin = fixture.CreateFeedbackAdminService(verifyDb);
+        var queue = await admin.GetReviewQueueAsync(user.Id, 50);
+
+        Assert.DoesNotContain(queue, item =>
+            item.SuggestedTemplateId == "T3" &&
+            item.EntityIds.Contains(eventAId) &&
+            item.EntityIds.Contains(eventBId));
+    }
+
+    [Fact]
+    public async Task G8_Merge_Uses_Canonical_Target_When_Target_Already_Redirected()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+        Guid aId;
+        Guid bId;
+        Guid cId;
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var a = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "person",
+                CanonicalName = "A",
+                NormalizedCanonicalName = "a",
+                EntityCard = "A"
+            };
+            var b = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "person",
+                CanonicalName = "B",
+                NormalizedCanonicalName = "b",
+                EntityCard = "B"
+            };
+            var c = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "person",
+                CanonicalName = "C",
+                NormalizedCanonicalName = "c",
+                EntityCard = "C"
+            };
+            db.CanonicalEntities.AddRange(a, b, c);
+            await db.SaveChangesAsync();
+            aId = a.Id;
+            bId = b.Id;
+            cId = c.Id;
+        }
+
+        await fixture.ApplyFeedbackAsync(
+            user.Id,
+            new FeedbackCaseApplyRequest(
+                "T3",
+                Json("{" +
+                     $"\"entity_a_id\":\"{cId}\"," +
+                     $"\"entity_b_id\":\"{bId}\"," +
+                     $"\"canonical_id\":\"{cId}\"," +
+                     "\"migrate_alias\":true," +
+                     "\"migrate_edges\":true," +
+                     "\"migrate_evidence\":true," +
+                     "\"reason\":\"merge_b_to_c\"}"),
+                null,
+                "merge b->c",
+                null,
+                user.Id,
+                true));
+
+        await fixture.ApplyFeedbackAsync(
+            user.Id,
+            new FeedbackCaseApplyRequest(
+                "T3",
+                Json("{" +
+                     $"\"entity_a_id\":\"{bId}\"," +
+                     $"\"entity_b_id\":\"{aId}\"," +
+                     $"\"canonical_id\":\"{bId}\"," +
+                     "\"migrate_alias\":true," +
+                     "\"migrate_edges\":true," +
+                     "\"migrate_evidence\":true," +
+                     "\"reason\":\"merge_a_to_b_but_b_redirected\"}"),
+                null,
+                "merge a->b",
+                null,
+                user.Id,
+                true));
+
+        await using var verifyDb = fixture.CreateDbContext();
+        var redirect = await verifyDb.EntityRedirects.FirstOrDefaultAsync(x => x.OldEntityId == aId && x.Active);
+        Assert.NotNull(redirect);
+        Assert.Equal(cId, redirect!.CanonicalEntityId);
+    }
+
+    [Fact]
+    public async Task G9_Merge_Impact_Queues_EntryReplay_Instead_Of_FullRebuild()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+        Guid entryId;
+        Guid aId;
+        Guid bId;
+
+        await using (var db = fixture.CreateDbContext())
+        {
+            var entry = new Entry
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Content = "test merge evidence",
+                CreatedAt = DateTime.UtcNow
+            };
+            db.Entries.Add(entry);
+
+            var a = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "person",
+                CanonicalName = "Alpha",
+                NormalizedCanonicalName = "alpha",
+                EntityCard = "Alpha"
+            };
+            var b = new CanonicalEntity
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Kind = "person",
+                CanonicalName = "Alfa",
+                NormalizedCanonicalName = "alfa",
+                EntityCard = "Alfa"
+            };
+            db.CanonicalEntities.AddRange(a, b);
+            await db.SaveChangesAsync();
+
+            db.EntityEvidence.Add(new EntityEvidence
+            {
+                Id = Guid.NewGuid(),
+                EntityId = a.Id,
+                EntryId = entry.Id,
+                EvidenceType = "mention",
+                Snippet = "Alpha",
+                Confidence = 0.9f,
+                RecordedAt = DateTime.UtcNow
+            });
+            db.EntityEvidence.Add(new EntityEvidence
+            {
+                Id = Guid.NewGuid(),
+                EntityId = b.Id,
+                EntryId = entry.Id,
+                EvidenceType = "mention",
+                Snippet = "Alfa",
+                Confidence = 0.9f,
+                RecordedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+
+            entryId = entry.Id;
+            aId = a.Id;
+            bId = b.Id;
+        }
+
+        var apply = await fixture.ApplyFeedbackAsync(
+            user.Id,
+            new FeedbackCaseApplyRequest(
+                "T3",
+                Json("{" +
+                     $"\"entity_a_id\":\"{aId}\"," +
+                     $"\"entity_b_id\":\"{bId}\"," +
+                     $"\"canonical_id\":\"{aId}\"," +
+                     "\"migrate_alias\":true," +
+                     "\"migrate_edges\":true," +
+                     "\"migrate_evidence\":true," +
+                     "\"reason\":\"impact_queue_test\"}"),
+                null,
+                "impact queue test",
+                null,
+                user.Id,
+                true));
+
+        await using var verifyDb = fixture.CreateDbContext();
+        var job = await verifyDb.FeedbackReplayJobs.FirstAsync(x => x.Id == apply.ReplayJob.Id);
+        using var payload = JsonDocument.Parse(job.PayloadJson);
+        var entryIds = payload.RootElement.GetProperty("entryIds").EnumerateArray().Select(x => Guid.Parse(x.GetString()!)).ToList();
+        Assert.Contains(entryId, entryIds);
     }
 
     private static System.Text.Json.JsonElement Json(string json)

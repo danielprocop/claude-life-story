@@ -202,7 +202,10 @@ internal static class Program
             var userId = options.UserId.Value;
             entriesQuery = entriesQuery.Where(x => x.UserId == userId);
             entitiesQuery = entitiesQuery.Where(x => x.UserId == userId);
+            aliasesQuery = aliasesQuery.Where(x => x.Entity.UserId == userId);
+            evidenceQuery = evidenceQuery.Where(x => x.Entity.UserId == userId);
             eventsQuery = eventsQuery.Where(x => x.UserId == userId);
+            participantsQuery = participantsQuery.Where(x => x.Event.UserId == userId);
             settlementsQuery = settlementsQuery.Where(x => x.UserId == userId);
         }
 
@@ -307,7 +310,10 @@ internal static class Program
             var userId = options.UserId.Value;
             entriesQuery = entriesQuery.Where(x => x.UserId == userId);
             entitiesQuery = entitiesQuery.Where(x => x.UserId == userId);
+            aliasesQuery = aliasesQuery.Where(x => x.Entity.UserId == userId);
+            evidenceQuery = evidenceQuery.Where(x => x.Entity.UserId == userId);
             eventsQuery = eventsQuery.Where(x => x.UserId == userId);
+            participantsQuery = participantsQuery.Where(x => x.Event.UserId == userId);
             settlementsQuery = settlementsQuery.Where(x => x.UserId == userId);
         }
 
