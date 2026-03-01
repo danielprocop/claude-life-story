@@ -1,4 +1,4 @@
-name: Deploy Failure Alert
+name: Deploy Monitor
 
 on:
   workflow_run:
