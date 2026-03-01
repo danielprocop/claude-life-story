@@ -26,6 +26,11 @@ public class AppDbContext : DbContext
     public DbSet<PersonalPolicy> PersonalPolicies => Set<PersonalPolicy>();
     public DbSet<ClarificationQuestion> ClarificationQuestions => Set<ClarificationQuestion>();
     public DbSet<EntryProcessingState> EntryProcessingStates => Set<EntryProcessingState>();
+    public DbSet<FeedbackCase> FeedbackCases => Set<FeedbackCase>();
+    public DbSet<FeedbackAction> FeedbackActions => Set<FeedbackAction>();
+    public DbSet<PolicyVersion> PolicyVersions => Set<PolicyVersion>();
+    public DbSet<EntityRedirect> EntityRedirects => Set<EntityRedirect>();
+    public DbSet<FeedbackReplayJob> FeedbackReplayJobs => Set<FeedbackReplayJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -327,6 +332,92 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(x => x.UserId);
             e.HasIndex(x => new { x.UserId, x.SourceUpdatedAt });
+        });
+
+        // FeedbackCase
+        modelBuilder.Entity<FeedbackCase>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.CreatedByRole).HasMaxLength(30).IsRequired();
+            e.Property(x => x.ScopeDefault).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            e.Property(x => x.TemplateId).HasMaxLength(20).IsRequired();
+            e.Property(x => x.TemplatePayloadJson).IsRequired();
+            e.HasOne(x => x.CreatedByUser)
+                .WithMany(x => x.CreatedFeedbackCases)
+                .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.Status, x.CreatedAt });
+            e.HasIndex(x => new { x.TemplateId, x.CreatedAt });
+        });
+
+        // FeedbackAction
+        modelBuilder.Entity<FeedbackAction>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Scope).HasMaxLength(20).IsRequired();
+            e.Property(x => x.ActionType).HasMaxLength(80).IsRequired();
+            e.Property(x => x.PayloadJson).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            e.HasOne(x => x.Case)
+                .WithMany(x => x.Actions)
+                .HasForeignKey(x => x.CaseId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.TargetUser)
+                .WithMany(x => x.TargetedFeedbackActions)
+                .HasForeignKey(x => x.TargetUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.SupersedesAction)
+                .WithMany()
+                .HasForeignKey(x => x.SupersedesActionId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.PolicyVersion, x.Scope, x.TargetUserId, x.Status });
+            e.HasIndex(x => new { x.CaseId, x.Status });
+        });
+
+        // PolicyVersion
+        modelBuilder.Entity<PolicyVersion>(e =>
+        {
+            e.HasKey(x => x.Version);
+            e.Property(x => x.Version).ValueGeneratedNever();
+            e.HasOne(x => x.CreatedByUser)
+                .WithMany(x => x.CreatedPolicyVersions)
+                .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.CreatedAt);
+        });
+
+        // EntityRedirect
+        modelBuilder.Entity<EntityRedirect>(e =>
+        {
+            e.HasKey(x => x.OldEntityId);
+            e.HasOne(x => x.OldEntity)
+                .WithMany()
+                .HasForeignKey(x => x.OldEntityId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.CanonicalEntity)
+                .WithMany()
+                .HasForeignKey(x => x.CanonicalEntityId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.CreatedByAction)
+                .WithMany()
+                .HasForeignKey(x => x.CreatedByActionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.CanonicalEntityId, x.Active });
+        });
+
+        // FeedbackReplayJob
+        modelBuilder.Entity<FeedbackReplayJob>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            e.Property(x => x.PayloadJson).IsRequired();
+            e.HasOne(x => x.TargetUser)
+                .WithMany(x => x.FeedbackReplayJobs)
+                .HasForeignKey(x => x.TargetUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.Status, x.CreatedAt });
+            e.HasIndex(x => new { x.TargetUserId, x.PolicyVersion, x.Status });
         });
     }
 }

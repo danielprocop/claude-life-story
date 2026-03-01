@@ -202,6 +202,7 @@ public class CognitiveGraphServiceTests
             db,
             new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
             new NoOpEntityRetrievalService(),
+            new FeedbackPolicyService(db),
             new ClarificationService(db),
             new NullLogger<CognitiveGraphService>());
 
@@ -227,6 +228,7 @@ public class CognitiveGraphServiceTests
             db,
             new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
             new NoOpEntityRetrievalService(),
+            new FeedbackPolicyService(db),
             new ClarificationService(db),
             new NullLogger<CognitiveGraphService>());
 
@@ -381,6 +383,7 @@ public class CognitiveGraphServiceTests
                 db,
                 new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
                 new NoOpEntityRetrievalService(),
+                new FeedbackPolicyService(db),
                 new ClarificationService(db),
                 new NullLogger<CognitiveGraphService>());
 

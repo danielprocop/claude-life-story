@@ -1,5 +1,6 @@
 using DiarioIntelligente.AI;
 using DiarioIntelligente.API.Services;
+using DiarioIntelligente.Core.Interfaces;
 using DiarioIntelligente.Infrastructure;
 using DiarioIntelligente.Infrastructure.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -33,10 +34,13 @@ builder.Services.AddAiServices(builder.Configuration);
 // Background processing queue
 builder.Services.AddSingleton<EntryProcessingQueue>();
 builder.Services.AddSingleton<UserMemoryRebuildQueue>();
+builder.Services.AddSingleton<FeedbackReplayQueue>();
+builder.Services.AddSingleton<IFeedbackReplayScheduler>(serviceProvider => serviceProvider.GetRequiredService<FeedbackReplayQueue>());
 builder.Services.AddHostedService<CognitiveSchemaBootstrapService>();
 builder.Services.AddHostedService<EntryProcessingService>();
 builder.Services.AddHostedService<UserMemoryRebuildService>();
 builder.Services.AddHostedService<EntryProcessingRecoveryService>();
+builder.Services.AddHostedService<FeedbackReplayService>();
 builder.Services.AddScoped<CurrentUserService>();
 
 // Cognito JWT Authentication

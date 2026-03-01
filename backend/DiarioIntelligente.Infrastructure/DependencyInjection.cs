@@ -41,6 +41,8 @@ public static class DependencyInjection
         services.AddScoped<IPersonalModelService, PersonalModelService>();
         services.AddScoped<ILedgerQueryService, LedgerQueryService>();
         services.AddScoped<IClarificationService, ClarificationService>();
+        services.AddScoped<IFeedbackPolicyService, FeedbackPolicyService>();
+        services.AddScoped<IFeedbackAdminService, FeedbackAdminService>();
 
         if (searchOptions.Enabled)
         {

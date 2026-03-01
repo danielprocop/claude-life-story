@@ -20,4 +20,8 @@ public class User
     public ICollection<PersonalPolicy> PersonalPolicies { get; set; } = new List<PersonalPolicy>();
     public ICollection<ClarificationQuestion> ClarificationQuestions { get; set; } = new List<ClarificationQuestion>();
     public ICollection<EntryProcessingState> EntryProcessingStates { get; set; } = new List<EntryProcessingState>();
+    public ICollection<FeedbackCase> CreatedFeedbackCases { get; set; } = new List<FeedbackCase>();
+    public ICollection<FeedbackAction> TargetedFeedbackActions { get; set; } = new List<FeedbackAction>();
+    public ICollection<PolicyVersion> CreatedPolicyVersions { get; set; } = new List<PolicyVersion>();
+    public ICollection<FeedbackReplayJob> FeedbackReplayJobs { get; set; } = new List<FeedbackReplayJob>();
 }

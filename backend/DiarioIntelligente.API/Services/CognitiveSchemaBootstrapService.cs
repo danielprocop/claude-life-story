@@ -182,7 +182,78 @@ public sealed class CognitiveSchemaBootstrapService : IHostedService
         )
         """,
         """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId" ON "EntryProcessingStates" ("UserId")""",
-        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId_SourceUpdatedAt" ON "EntryProcessingStates" ("UserId", "SourceUpdatedAt")"""
+        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId_SourceUpdatedAt" ON "EntryProcessingStates" ("UserId", "SourceUpdatedAt")""",
+        """
+        CREATE TABLE IF NOT EXISTS "FeedbackCases" (
+            "Id" uuid NOT NULL PRIMARY KEY,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "CreatedByUserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE RESTRICT,
+            "CreatedByRole" character varying(30) NOT NULL,
+            "ScopeDefault" character varying(20) NOT NULL,
+            "Status" character varying(20) NOT NULL,
+            "TemplateId" character varying(20) NOT NULL,
+            "TemplatePayloadJson" text NOT NULL,
+            "ReferencesJson" text NULL,
+            "PreviewSummaryJson" text NULL,
+            "AppliedPolicyVersion" integer NULL,
+            "Reason" text NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackCases_Status_CreatedAt" ON "FeedbackCases" ("Status", "CreatedAt")""",
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackCases_TemplateId_CreatedAt" ON "FeedbackCases" ("TemplateId", "CreatedAt")""",
+        """
+        CREATE TABLE IF NOT EXISTS "FeedbackActions" (
+            "Id" uuid NOT NULL PRIMARY KEY,
+            "CaseId" uuid NOT NULL REFERENCES "FeedbackCases"("Id") ON DELETE CASCADE,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "Scope" character varying(20) NOT NULL,
+            "TargetUserId" uuid NULL REFERENCES "Users"("Id") ON DELETE SET NULL,
+            "ActionType" character varying(80) NOT NULL,
+            "PayloadJson" text NOT NULL,
+            "Status" character varying(20) NOT NULL,
+            "PolicyVersion" integer NOT NULL,
+            "SupersedesActionId" uuid NULL REFERENCES "FeedbackActions"("Id") ON DELETE SET NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackActions_PolicyVersion_Scope_TargetUserId_Status" ON "FeedbackActions" ("PolicyVersion", "Scope", "TargetUserId", "Status")""",
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackActions_CaseId_Status" ON "FeedbackActions" ("CaseId", "Status")""",
+        """
+        CREATE TABLE IF NOT EXISTS "PolicyVersions" (
+            "Version" integer NOT NULL PRIMARY KEY,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "CreatedByUserId" uuid NOT NULL REFERENCES "Users"("Id") ON DELETE RESTRICT,
+            "SummaryJson" text NULL,
+            "Fingerprint" text NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_PolicyVersions_CreatedAt" ON "PolicyVersions" ("CreatedAt")""",
+        """
+        CREATE TABLE IF NOT EXISTS "EntityRedirects" (
+            "OldEntityId" uuid NOT NULL PRIMARY KEY REFERENCES "CanonicalEntities"("Id") ON DELETE CASCADE,
+            "CanonicalEntityId" uuid NOT NULL REFERENCES "CanonicalEntities"("Id") ON DELETE CASCADE,
+            "CreatedByActionId" uuid NOT NULL REFERENCES "FeedbackActions"("Id") ON DELETE RESTRICT,
+            "Active" boolean NOT NULL,
+            "CreatedAt" timestamp with time zone NOT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_EntityRedirects_CanonicalEntityId_Active" ON "EntityRedirects" ("CanonicalEntityId", "Active")""",
+        """
+        CREATE TABLE IF NOT EXISTS "FeedbackReplayJobs" (
+            "Id" uuid NOT NULL PRIMARY KEY,
+            "CreatedAt" timestamp with time zone NOT NULL,
+            "StartedAt" timestamp with time zone NULL,
+            "CompletedAt" timestamp with time zone NULL,
+            "Status" character varying(30) NOT NULL,
+            "PolicyVersion" integer NOT NULL,
+            "TargetUserId" uuid NULL REFERENCES "Users"("Id") ON DELETE SET NULL,
+            "DryRun" boolean NOT NULL,
+            "PayloadJson" text NOT NULL,
+            "SummaryJson" text NULL,
+            "Error" text NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackReplayJobs_Status_CreatedAt" ON "FeedbackReplayJobs" ("Status", "CreatedAt")""",
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackReplayJobs_TargetUserId_PolicyVersion_Status" ON "FeedbackReplayJobs" ("TargetUserId", "PolicyVersion", "Status")"""
     };
 
     private static readonly string[] SqliteStatements =
@@ -330,6 +401,77 @@ public sealed class CognitiveSchemaBootstrapService : IHostedService
         )
         """,
         """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId" ON "EntryProcessingStates" ("UserId")""",
-        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId_SourceUpdatedAt" ON "EntryProcessingStates" ("UserId", "SourceUpdatedAt")"""
+        """CREATE INDEX IF NOT EXISTS "IX_EntryProcessingStates_UserId_SourceUpdatedAt" ON "EntryProcessingStates" ("UserId", "SourceUpdatedAt")""",
+        """
+        CREATE TABLE IF NOT EXISTS "FeedbackCases" (
+            "Id" TEXT NOT NULL PRIMARY KEY,
+            "CreatedAt" TEXT NOT NULL,
+            "CreatedByUserId" TEXT NOT NULL REFERENCES "Users"("Id") ON DELETE RESTRICT,
+            "CreatedByRole" TEXT NOT NULL,
+            "ScopeDefault" TEXT NOT NULL,
+            "Status" TEXT NOT NULL,
+            "TemplateId" TEXT NOT NULL,
+            "TemplatePayloadJson" TEXT NOT NULL,
+            "ReferencesJson" TEXT NULL,
+            "PreviewSummaryJson" TEXT NULL,
+            "AppliedPolicyVersion" INTEGER NULL,
+            "Reason" TEXT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackCases_Status_CreatedAt" ON "FeedbackCases" ("Status", "CreatedAt")""",
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackCases_TemplateId_CreatedAt" ON "FeedbackCases" ("TemplateId", "CreatedAt")""",
+        """
+        CREATE TABLE IF NOT EXISTS "FeedbackActions" (
+            "Id" TEXT NOT NULL PRIMARY KEY,
+            "CaseId" TEXT NOT NULL REFERENCES "FeedbackCases"("Id") ON DELETE CASCADE,
+            "CreatedAt" TEXT NOT NULL,
+            "Scope" TEXT NOT NULL,
+            "TargetUserId" TEXT NULL REFERENCES "Users"("Id") ON DELETE SET NULL,
+            "ActionType" TEXT NOT NULL,
+            "PayloadJson" TEXT NOT NULL,
+            "Status" TEXT NOT NULL,
+            "PolicyVersion" INTEGER NOT NULL,
+            "SupersedesActionId" TEXT NULL REFERENCES "FeedbackActions"("Id") ON DELETE SET NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackActions_PolicyVersion_Scope_TargetUserId_Status" ON "FeedbackActions" ("PolicyVersion", "Scope", "TargetUserId", "Status")""",
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackActions_CaseId_Status" ON "FeedbackActions" ("CaseId", "Status")""",
+        """
+        CREATE TABLE IF NOT EXISTS "PolicyVersions" (
+            "Version" INTEGER NOT NULL PRIMARY KEY,
+            "CreatedAt" TEXT NOT NULL,
+            "CreatedByUserId" TEXT NOT NULL REFERENCES "Users"("Id") ON DELETE RESTRICT,
+            "SummaryJson" TEXT NULL,
+            "Fingerprint" TEXT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_PolicyVersions_CreatedAt" ON "PolicyVersions" ("CreatedAt")""",
+        """
+        CREATE TABLE IF NOT EXISTS "EntityRedirects" (
+            "OldEntityId" TEXT NOT NULL PRIMARY KEY REFERENCES "CanonicalEntities"("Id") ON DELETE CASCADE,
+            "CanonicalEntityId" TEXT NOT NULL REFERENCES "CanonicalEntities"("Id") ON DELETE CASCADE,
+            "CreatedByActionId" TEXT NOT NULL REFERENCES "FeedbackActions"("Id") ON DELETE RESTRICT,
+            "Active" INTEGER NOT NULL,
+            "CreatedAt" TEXT NOT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_EntityRedirects_CanonicalEntityId_Active" ON "EntityRedirects" ("CanonicalEntityId", "Active")""",
+        """
+        CREATE TABLE IF NOT EXISTS "FeedbackReplayJobs" (
+            "Id" TEXT NOT NULL PRIMARY KEY,
+            "CreatedAt" TEXT NOT NULL,
+            "StartedAt" TEXT NULL,
+            "CompletedAt" TEXT NULL,
+            "Status" TEXT NOT NULL,
+            "PolicyVersion" INTEGER NOT NULL,
+            "TargetUserId" TEXT NULL REFERENCES "Users"("Id") ON DELETE SET NULL,
+            "DryRun" INTEGER NOT NULL,
+            "PayloadJson" TEXT NOT NULL,
+            "SummaryJson" TEXT NULL,
+            "Error" TEXT NULL
+        )
+        """,
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackReplayJobs_Status_CreatedAt" ON "FeedbackReplayJobs" ("Status", "CreatedAt")""",
+        """CREATE INDEX IF NOT EXISTS "IX_FeedbackReplayJobs_TargetUserId_PolicyVersion_Status" ON "FeedbackReplayJobs" ("TargetUserId", "PolicyVersion", "Status")"""
     };
 }

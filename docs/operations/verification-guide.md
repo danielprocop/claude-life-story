@@ -65,3 +65,48 @@ In caso di evento con split non esplicitato:
 - `GET /api/profile/questions` mostra al massimo poche domande aperte
 - `POST /api/profile/questions/{id}/answer` salva policy personale
 - nuova entry simile usa policy senza richiedere nuovamente conferma
+
+### 6) Feedback system admin
+
+1. preview:
+
+```http
+POST /api/admin/feedback/cases/preview
+{
+  "templateId": "T1",
+  "templatePayload": {
+    "token": "inoltre",
+    "applies_to": "PERSON",
+    "classification": "CONNECTIVE"
+  },
+  "targetUserId": "<USER_ID>"
+}
+```
+
+2. apply:
+
+```http
+POST /api/admin/feedback/cases/apply
+{
+  "templateId": "T1",
+  "templatePayload": {
+    "token": "inoltre",
+    "applies_to": "PERSON",
+    "classification": "CONNECTIVE"
+  },
+  "targetUserId": "<USER_ID>",
+  "apply": true
+}
+```
+
+3. verifica policy/debug:
+
+- `GET /api/admin/policy/version`
+- `GET /api/admin/policy/summary?userId=<USER_ID>`
+- `GET /api/admin/review-queue?userId=<USER_ID>`
+- `GET /api/admin/entities/search?q=inoltre&userId=<USER_ID>`
+- `GET /api/admin/entities/{id}/debug?userId=<USER_ID>`
+
+4. revert:
+
+- `POST /api/admin/feedback/cases/{caseId}/revert`
