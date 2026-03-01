@@ -32,18 +32,30 @@
     <div class="state-card empty">Nessuna entry ancora. Vai a scrivere qualcosa!</div>
   } @else {
     <div class="timeline-controls">
-      <button type="button" (click)="loadPrevious()" [disabled]="!timeline()!.hasPrevious || loading()">← Indietro</button>
+      <button type="button" (click)="loadPrevious()" [disabled]="!canLoadPrevious()">← Indietro</button>
       <div class="timeline-meta">
         <span class="window-label">{{ windowLabel() }}</span>
         <span class="window-count">{{ totalEntriesInWindow() }} entry nel range</span>
       </div>
-      <button type="button" (click)="loadNext()" [disabled]="!timeline()!.hasNext || loading()">Avanti →</button>
+      <button type="button" (click)="loadNext()" [disabled]="!canLoadNext()">Avanti →</button>
     </div>
 
     <div class="timeline-scroll-wrap">
-      <div class="timeline-scroll">
+      @if (scrollLeftVisible()) {
+        <button type="button" class="scroll-arrow left" (click)="scrollTimeline('left')" aria-label="Scorri a sinistra">
+          ←
+        </button>
+      }
+      @if (scrollRightVisible()) {
+        <button type="button" class="scroll-arrow right" (click)="scrollTimeline('right')" aria-label="Scorri a destra">
+          →
+        </button>
+      }
+
+      <div class="timeline-scroll" #timelineScrollEl (scroll)="onTimelineScrolled()">
+        <div class="timeline-spacer" aria-hidden="true"></div>
         @for (bucket of timeline()!.buckets; track bucket.bucketKey) {
-          <section class="timeline-bucket">
+          <section class="timeline-bucket" [attr.data-bucket-key]="bucket.bucketKey">
             <header class="bucket-header">
               <h3>{{ bucket.label }}</h3>
               <span>{{ bucket.entryCount }}</span>
@@ -71,7 +83,12 @@
             }
           </section>
         }
+        <div class="timeline-spacer" aria-hidden="true"></div>
       </div>
+
+      @if (scrollRightVisible()) {
+        <p class="scroll-hint">Suggerimento: scorri orizzontalmente per vedere altri periodi.</p>
+      }
     </div>
   }
 </div>

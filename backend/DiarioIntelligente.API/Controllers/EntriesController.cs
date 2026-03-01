@@ -199,20 +199,9 @@ public class EntriesController : AuthenticatedController
                 cards));
         }
 
-        var earliestEntryUtc = await _db.Entries
-            .Where(entry => entry.UserId == GetUserId())
-            .OrderBy(entry => entry.CreatedAt)
-            .Select(entry => (DateTime?)entry.CreatedAt)
-            .FirstOrDefaultAsync(HttpContext.RequestAborted);
-
-        var hasPrevious = false;
-        if (earliestEntryUtc.HasValue)
-        {
-            var earliestLocalBucket = GetBucketStartLocal(
-                ToLocalTime(earliestEntryUtc.Value, safeTimezoneOffset),
-                safeView);
-            hasPrevious = earliestLocalBucket < oldestBucketStartLocal;
-        }
+        var hasPrevious = await _db.Entries.AnyAsync(
+            entry => entry.UserId == GetUserId() && entry.CreatedAt < rangeStartUtc,
+            HttpContext.RequestAborted);
 
         var hasNext = newestBucketStartLocal < nowBucketStartLocal;
         DateTime? previousCursorUtc = hasPrevious
