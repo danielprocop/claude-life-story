@@ -158,6 +158,14 @@ Output action:
 
 ## Workflow Operativo
 
+UI raccomandata:
+
+- feedback a livello nodo su pagina `/nodes/:id` (preview/apply template guidati)
+- console admin su `/feedback-admin` (review queue, case history, revert, debug)
+- il vecchio feedback su entry e considerato legacy e non piu usato nel frontend
+
+Workflow API:
+
 1. `GET /api/admin/review-queue`
 2. `POST /api/admin/feedback/cases/preview`
 3. `POST /api/admin/feedback/cases/apply`

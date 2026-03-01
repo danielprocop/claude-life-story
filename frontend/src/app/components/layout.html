@@ -70,6 +70,12 @@
           <span>Temi</span>
         </a>
       </li>
+      <li>
+        <a routerLink="/feedback-admin" routerLinkActive="active">
+          <span class="nav-icon">&#9881;</span>
+          <span>Feedback</span>
+        </a>
+      </li>
     </ul>
     <div class="sidebar-footer">
       <p class="user-label" *ngIf="auth.user() as user">{{ user.email }}</p>
@@ -114,7 +120,7 @@
       <a routerLink="/write" routerLinkActive="active">Scrivi</a>
       <a routerLink="/chat" routerLinkActive="active">Chat</a>
       <a routerLink="/search" routerLinkActive="active">Ricerca</a>
-      <a routerLink="/graph" routerLinkActive="active">Mappa</a>
+      <a routerLink="/feedback-admin" routerLinkActive="active">Feedback</a>
     </nav>
   </div>
 </div>

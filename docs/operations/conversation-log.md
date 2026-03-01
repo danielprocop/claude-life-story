@@ -265,3 +265,21 @@ Questa conversazione ha consolidato la direzione del progetto.
 - nuova documentazione: `docs/feedback-system.md`
 - test aggiunti: `FeedbackSystemTests` con scenari G1..G5 (block token, merge redirect, change type, alias linking, auditability)
 - suite backend aggiornata: `dotnet test` verde con 25 test passati
+
+### Aggiornamento successivo
+
+- feedback spostato lato frontend da entry-level a node-level:
+  - rimossa UI `Correggi estrazione AI` da `entry-detail`
+  - aggiunto pannello `Feedback nodo (admin)` in `/nodes/:id` con template `T1/T3/T4/T5/T6`, preview e apply
+- aggiunta console operativa `/feedback-admin`:
+  - policy state (`version/summary`)
+  - assist template (precompile)
+  - review queue -> prefill payload
+  - preview/apply case
+  - case history + revert
+  - entity search + debug explainability
+- client API frontend esteso con tutti gli endpoint admin feedback/policy/debug
+- routing/nav aggiornati con voce `Feedback`
+- documentazione aggiornata:
+  - `docs/feedback-system.md` (workflow UI node-level + admin console)
+  - `docs/operations/verification-guide.md` (check UI feedback node)
