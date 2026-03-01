@@ -283,3 +283,18 @@ Questa conversazione ha consolidato la direzione del progetto.
 - documentazione aggiornata:
   - `docs/feedback-system.md` (workflow UI node-level + admin console)
   - `docs/operations/verification-guide.md` (check UI feedback node)
+
+### Aggiornamento successivo
+
+- eseguito audit post-pull su branch `main`:
+  - working tree pulito
+  - nessun marker di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`)
+  - nessun conflitto git aperto tra lavoro feedback precedente e attuale
+- analizzato failure GitHub Actions backend su run `22544822066` (e run precedente `22544008031`):
+  - job `Deploy Backend` fallito al passo `Deploy to App Runner`
+  - frontend nello stesso run completato con successo
+  - pattern compatibile con deploy ravvicinati su App Runner (servizio occupato durante `start-deployment`)
+- applicato hardening a `.github/workflows/deploy.yml`:
+  - aggiunta `concurrency` (`deploy-main`, `cancel-in-progress: true`)
+  - step backend `Deploy to App Runner` con wait su operazioni `IN_PROGRESS`
+  - retry con backoff su errori transient/busy (`InvalidStateException`/`ConflictException`)

@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
 permissions:
   id-token: write
   contents: read
@@ -44,7 +48,53 @@ jobs:
 
       - name: Deploy to App Runner
         run: |
-          aws apprunner start-deployment --service-arn ${{ env.APP_RUNNER_ARN }}
+          set -euo pipefail
+
+          echo "Waiting for App Runner to be ready for a new deployment..."
+          for attempt in {1..30}; do
+            LAST_STATUS=$(aws apprunner list-operations \
+              --service-arn "${{ env.APP_RUNNER_ARN }}" \
+              --region "${{ env.AWS_REGION }}" \
+              --max-results 1 \
+              --query 'OperationSummaryList[0].Status' \
+              --output text 2>/dev/null || echo "UNKNOWN")
+
+            if [ "$LAST_STATUS" != "IN_PROGRESS" ]; then
+              break
+            fi
+
+            echo "App Runner operation still IN_PROGRESS (attempt $attempt/30). Waiting 10s..."
+            sleep 10
+          done
+
+          echo "Starting App Runner deployment with retry on busy state..."
+          for attempt in {1..12}; do
+            set +e
+            OUTPUT=$(aws apprunner start-deployment \
+              --service-arn "${{ env.APP_RUNNER_ARN }}" \
+              --region "${{ env.AWS_REGION }}" 2>&1)
+            EXIT_CODE=$?
+            set -e
+
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "$OUTPUT"
+              echo "App Runner deployment started."
+              exit 0
+            fi
+
+            echo "$OUTPUT"
+            if echo "$OUTPUT" | grep -qiE "InvalidStateException|ConflictException|operation is in progress|A deployment is already in progress"; then
+              echo "Service busy (attempt $attempt/12). Waiting 10s and retrying..."
+              sleep 10
+              continue
+            fi
+
+            echo "Non-retryable App Runner error."
+            exit $EXIT_CODE
+          done
+
+          echo "Unable to start App Runner deployment after retries."
+          exit 1
 
   deploy-frontend:
     name: Deploy Frontend
