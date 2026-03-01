@@ -90,6 +90,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     private readonly AppDbContext _db;
     private readonly ISearchProjectionService _searchProjectionService;
     private readonly IEntityRetrievalService _entityRetrievalService;
+    private readonly IFeedbackPolicyService _feedbackPolicyService;
     private readonly IClarificationService _clarificationService;
     private readonly ILogger<CognitiveGraphService> _logger;
 
@@ -97,18 +98,25 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         AppDbContext db,
         ISearchProjectionService searchProjectionService,
         IEntityRetrievalService entityRetrievalService,
+        IFeedbackPolicyService feedbackPolicyService,
         IClarificationService clarificationService,
         ILogger<CognitiveGraphService> logger)
     {
         _db = db;
         _searchProjectionService = searchProjectionService;
         _entityRetrievalService = entityRetrievalService;
+        _feedbackPolicyService = feedbackPolicyService;
         _clarificationService = clarificationService;
         _logger = logger;
     }
 
-    public async Task ProcessEntryAsync(Entry entry, AiAnalysisResult analysis, CancellationToken cancellationToken = default)
+    public async Task ProcessEntryAsync(
+        Entry entry,
+        AiAnalysisResult analysis,
+        FeedbackPolicyRuleset? feedbackRuleset = null,
+        CancellationToken cancellationToken = default)
     {
+        var ruleset = feedbackRuleset ?? FeedbackPolicyRuleset.Empty(entry.UserId, 0);
         var entities = await _db.CanonicalEntities
             .Where(x => x.UserId == entry.UserId)
             .Include(x => x.Aliases)
@@ -126,7 +134,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         foreach (var mention in ExtractRoleMentions(entry.Content))
         {
+            if (IsBlockedByRules(mention.RawText, "PERSON", ruleset))
+                continue;
+
             var entity = await GetOrCreateAnchorEntityAsync(entry.UserId, mention.Role.AnchorKey, mention.Role.DisplayName, entities, cancellationToken);
+            entity = ResolveCanonicalEntity(entity, entities, ruleset);
             AddAliasIfMissing(entity, mention.RawText, "role_phrase", 1.0f);
             AddEvidenceIfMissing(entity, entry, "role_anchor", mention.RawText, "anchor", mention.Role.AnchorKey, "role_anchor", 1.0f);
             roleContext[mention.Role.AnchorKey] = entity;
@@ -135,7 +147,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         foreach (var binding in ExtractRoleNameBindings(entry.Content))
         {
+            if (IsBlockedByRules(binding.Name, "PERSON", ruleset))
+                continue;
+
             var entity = await GetOrCreateAnchorEntityAsync(entry.UserId, binding.Role.AnchorKey, binding.Role.DisplayName, entities, cancellationToken);
+            entity = ResolveCanonicalEntity(entity, entities, ruleset);
             ApplyCanonicalName(entity, binding.Name, binding.Role.DisplayName);
             AddAliasIfMissing(entity, binding.Role.PrimaryAlias, "role_phrase", 1.0f);
             AddEvidenceIfMissing(entity, entry, "name_assignment", binding.Snippet, "canonical_name", ToDisplayName(binding.Name), "role_name_binding", 0.98f);
@@ -145,7 +161,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         foreach (var binding in ExtractParentheticalBindings(entry.Content))
         {
+            if (IsBlockedByRules(binding.Name, "PERSON", ruleset))
+                continue;
+
             var entity = await GetOrCreateAnchorEntityAsync(entry.UserId, binding.Role.AnchorKey, binding.Role.DisplayName, entities, cancellationToken);
+            entity = ResolveCanonicalEntity(entity, entities, ruleset);
             ApplyCanonicalName(entity, binding.Name, binding.Role.DisplayName);
             AddAliasIfMissing(entity, binding.Role.PrimaryAlias, "role_phrase", 1.0f);
             AddEvidenceIfMissing(entity, entry, "name_assignment", binding.Snippet, "canonical_name", ToDisplayName(binding.Name), "parenthetical_role", 0.99f);
@@ -156,6 +176,9 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         var resolvedNameMentions = new Dictionary<string, CanonicalEntity>(StringComparer.OrdinalIgnoreCase);
         foreach (var personName in ExtractStandalonePersonMentions(entry.Content, analysis))
         {
+            if (IsBlockedByRules(personName, "PERSON", ruleset))
+                continue;
+
             var normalizedPersonName = Normalize(personName);
             if (normalizedStandalonePlaces.Contains(normalizedPersonName))
             {
@@ -176,12 +199,21 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 continue;
             }
 
+            var forced = TryResolveByFeedbackRules(personName, "person", entities, ruleset);
+            if (forced != null)
+            {
+                AddEvidenceIfMissing(forced, entry, "mention", personName, "mention", personName, "feedback_forced_link", 1.0f);
+                resolvedNameMentions[personName] = forced;
+                MarkChanged(forced, changedEntities);
+                continue;
+            }
+
             var hasStrongSignal = strongPersonNameHints.Contains(normalizedPersonName);
             var hasExistingPerson = HasExistingPersonMatch(entities, personName);
             if (!hasStrongSignal && !hasExistingPerson)
                 continue;
 
-            var entity = await ResolveOrCreatePersonEntityAsync(entry.UserId, personName, entities, entry, roleContext.Values.ToList(), cancellationToken);
+            var entity = await ResolveOrCreatePersonEntityAsync(entry.UserId, personName, entities, entry, roleContext.Values.ToList(), ruleset, cancellationToken);
             resolvedNameMentions[personName] = entity;
             MarkChanged(entity, changedEntities);
         }
@@ -193,6 +225,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             entities,
             changedEntities,
             standalonePlaceMentions,
+            ruleset,
             cancellationToken);
 
         var eventSignal = ExtractEventSignal(entry.Content, entry.CreatedAt, analysis, resolvedNameMentions, roleContext);
@@ -203,7 +236,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             {
                 if (participantRef.Entity != null)
                 {
-                    participants.Add(participantRef.Entity);
+                    participants.Add(ResolveCanonicalEntity(participantRef.Entity, entities, ruleset));
                     continue;
                 }
 
@@ -213,6 +246,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                     entities,
                     entry,
                     roleContext.Values.ToList(),
+                    ruleset,
                     cancellationToken);
 
                 participants.Add(resolved);
@@ -228,6 +262,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                         entities,
                         entry,
                         roleContext.Values.ToList(),
+                        ruleset,
                         cancellationToken);
 
                 if (participants.All(x => x.Id != resolvedCounterparty.Id))
@@ -274,6 +309,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                     entities,
                     entry,
                     roleContext.Values.ToList(),
+                    ruleset,
                     cancellationToken);
 
                 await ApplyPaymentAsync(entry, counterparty, paymentSignal, cancellationToken);
@@ -283,6 +319,12 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         foreach (var entity in changedEntities.DistinctBy(x => x.Id))
         {
+            if (ruleset.EntityTypeOverrides.TryGetValue(entity.Id, out var overriddenKind) &&
+                !string.IsNullOrWhiteSpace(overriddenKind))
+            {
+                entity.Kind = overriddenKind;
+            }
+
             entity.EntityCard = BuildEntityCard(entity);
             entity.UpdatedAt = DateTime.UtcNow;
         }
@@ -335,6 +377,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         int limit = 24,
         CancellationToken cancellationToken = default)
     {
+        var ruleset = await _feedbackPolicyService.GetRulesetAsync(userId, cancellationToken);
+        var redirectedIds = ruleset.Redirects.Keys.ToList();
         var safeLimit = Math.Clamp(limit, 1, 100);
         var rawQuery = query?.Trim() ?? string.Empty;
         var normalizedQuery = Normalize(rawQuery);
@@ -346,6 +390,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         IQueryable<CanonicalEntity> filtered = _db.CanonicalEntities
             .Where(x => x.UserId == userId && x.Kind != "person_suppressed");
+        if (redirectedIds.Count > 0)
+            filtered = filtered.Where(x => !redirectedIds.Contains(x.Id));
         var placeNormalizedNames = _db.CanonicalEntities
             .Where(x => x.UserId == userId && x.Kind == "place")
             .Select(x => x.NormalizedCanonicalName);
@@ -417,6 +463,10 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
     public async Task<NodeViewResponse?> GetNodeViewAsync(Guid userId, Guid entityId, CancellationToken cancellationToken = default)
     {
+        var ruleset = await _feedbackPolicyService.GetRulesetAsync(userId, cancellationToken);
+        var requestedEntityId = entityId;
+        entityId = ruleset.ResolveCanonical(entityId);
+
         var entity = await _db.CanonicalEntities
             .Where(x => x.UserId == userId && x.Id == entityId)
             .Include(x => x.Aliases)
@@ -431,6 +481,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             relations.Add(new NodeRelationResponse("role_anchor", entity.AnchorKey));
         var resolutionContext = await BuildResolutionContextAsync(userId, cancellationToken);
         var resolutionNotes = BuildResolutionNotes(entity, resolutionContext);
+        if (requestedEntityId != entityId)
+            resolutionNotes.Insert(0, $"Redirect attivo: {requestedEntityId} -> {entityId}");
 
         PersonNodeViewResponse? personView = null;
         EventNodeViewResponse? eventView = null;
@@ -755,8 +807,13 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         List<CanonicalEntity> entities,
         Entry entry,
         List<CanonicalEntity> roleEntities,
+        FeedbackPolicyRuleset ruleset,
         CancellationToken cancellationToken)
     {
+        var forced = TryResolveByFeedbackRules(rawName, "person", entities, ruleset);
+        if (forced != null)
+            return forced;
+
         var normalized = Normalize(rawName);
         if (string.IsNullOrWhiteSpace(normalized))
             throw new InvalidOperationException("Cannot resolve empty entity name.");
@@ -771,7 +828,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         {
             AddAliasIfMissing(exact, rawName, "observed_name", 0.95f);
             AddEvidenceIfMissing(exact, entry, "mention", rawName, "mention", rawName, "exact_alias", 0.95f);
-            return exact;
+            return ResolveCanonicalEntity(exact, entities, ruleset);
         }
 
         var openSearchCandidates = await _entityRetrievalService
@@ -798,7 +855,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         {
             AddAliasIfMissing(ranked[0].Entity, rawName, "observed_typo", 0.9f);
             AddEvidenceIfMissing(ranked[0].Entity, entry, "merge", rawName, "alias", rawName, "fuzzy_alias", (float)ranked[0].Score);
-            return ranked[0].Entity;
+            return ResolveCanonicalEntity(ranked[0].Entity, entities, ruleset);
         }
 
         foreach (var roleEntity in roleEntities)
@@ -807,14 +864,14 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             {
                 AddAliasIfMissing(roleEntity, rawName, "observed_typo", 0.91f);
                 AddEvidenceIfMissing(roleEntity, entry, "merge", rawName, "alias", rawName, "role_anchor_fuzzy", 0.91f);
-                return roleEntity;
+                return ResolveCanonicalEntity(roleEntity, entities, ruleset);
             }
         }
 
         var created = await CreateEntityAsync(userId, "person", ToDisplayName(rawName), null, entities, cancellationToken);
         AddAliasIfMissing(created, rawName, "canonical_name", 1.0f);
         AddEvidenceIfMissing(created, entry, "mention", rawName, "canonical_name", rawName, "new_person", 0.8f);
-        return created;
+        return ResolveCanonicalEntity(created, entities, ruleset);
     }
 
     private async Task UpsertNonPersonConceptEntitiesAsync(
@@ -824,6 +881,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         List<CanonicalEntity> entities,
         List<CanonicalEntity> changedEntities,
         IReadOnlyCollection<string> standalonePlaceMentions,
+        FeedbackPolicyRuleset ruleset,
         CancellationToken cancellationToken)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -831,6 +889,9 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         foreach (var concept in analysis.Concepts)
         {
             if (string.IsNullOrWhiteSpace(concept.Label))
+                continue;
+
+            if (IsBlockedByRules(concept.Label, "ANY", ruleset) || IsForcedNonEntity(concept.Label, ruleset))
                 continue;
 
             var kind = MapConceptTypeToEntityKind(concept.Type);
@@ -849,6 +910,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 kind,
                 entry,
                 entities,
+                ruleset,
                 cancellationToken);
 
             if (string.IsNullOrWhiteSpace(entity.Description))
@@ -872,6 +934,9 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             if (string.IsNullOrWhiteSpace(goalSignal.Text))
                 continue;
 
+            if (IsBlockedByRules(goalSignal.Text, "GOAL", ruleset) || IsForcedNonEntity(goalSignal.Text, ruleset))
+                continue;
+
             var kind = MapConceptTypeToEntityKind(goalSignal.Type);
             if (string.Equals(kind, "person", StringComparison.OrdinalIgnoreCase))
                 continue;
@@ -888,6 +953,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 kind,
                 entry,
                 entities,
+                ruleset,
                 cancellationToken);
 
             AddEvidenceIfMissing(
@@ -909,12 +975,16 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             if (!seen.Add(key))
                 continue;
 
+            if (IsBlockedByRules(place, "ANY", ruleset) || IsForcedNonEntity(place, ruleset))
+                continue;
+
             var entity = await ResolveOrCreateEntityByKindAsync(
                 userId,
                 place,
                 "place",
                 entry,
                 entities,
+                ruleset,
                 cancellationToken);
 
             AddEvidenceIfMissing(
@@ -937,8 +1007,13 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         string kind,
         Entry entry,
         List<CanonicalEntity> entities,
+        FeedbackPolicyRuleset ruleset,
         CancellationToken cancellationToken)
     {
+        var forced = TryResolveByFeedbackRules(rawName, kind, entities, ruleset);
+        if (forced != null)
+            return forced;
+
         var normalized = Normalize(rawName);
         if (string.IsNullOrWhiteSpace(normalized))
             throw new InvalidOperationException("Cannot resolve empty entity name.");
@@ -953,7 +1028,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         {
             AddAliasIfMissing(exact, rawName, "observed_name", 0.95f);
             AddEvidenceIfMissing(exact, entry, "mention", rawName, "mention", rawName, "exact_alias", 0.95f);
-            return exact;
+            return ResolveCanonicalEntity(exact, entities, ruleset);
         }
 
         var retrievalCandidates = await _entityRetrievalService.SearchEntityCandidatesAsync(userId, rawName, 6, cancellationToken);
@@ -967,7 +1042,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             {
                 AddAliasIfMissing(retrieved, rawName, "observed_name", 0.9f);
                 AddEvidenceIfMissing(retrieved, entry, "merge", rawName, "alias", rawName, "search_candidate", 0.9f);
-                return retrieved;
+                return ResolveCanonicalEntity(retrieved, entities, ruleset);
             }
         }
 
@@ -988,13 +1063,13 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         {
             AddAliasIfMissing(fuzzy.Entity, rawName, "observed_typo", 0.88f);
             AddEvidenceIfMissing(fuzzy.Entity, entry, "merge", rawName, "alias", rawName, "fuzzy_alias", (float)fuzzy.Score);
-            return fuzzy.Entity;
+            return ResolveCanonicalEntity(fuzzy.Entity, entities, ruleset);
         }
 
         var created = await CreateEntityAsync(userId, kind, ToDisplayName(rawName), null, entities, cancellationToken);
         AddAliasIfMissing(created, rawName, "canonical_name", 1.0f);
         AddEvidenceIfMissing(created, entry, "mention", rawName, "canonical_name", rawName, "new_entity", 0.8f);
-        return created;
+        return ResolveCanonicalEntity(created, entities, ruleset);
     }
 
     private async Task<CanonicalEntity> GetOrCreateAnchorEntityAsync(
@@ -1121,6 +1196,90 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     {
         if (changedEntities.All(x => x.Id != entity.Id))
             changedEntities.Add(entity);
+    }
+
+    private static CanonicalEntity ResolveCanonicalEntity(
+        CanonicalEntity entity,
+        List<CanonicalEntity> entities,
+        FeedbackPolicyRuleset ruleset)
+    {
+        var canonicalId = ruleset.ResolveCanonical(entity.Id);
+        if (canonicalId == entity.Id)
+            return entity;
+
+        return entities.FirstOrDefault(x => x.Id == canonicalId) ?? entity;
+    }
+
+    private static bool IsBlockedByRules(string raw, string appliesTo, FeedbackPolicyRuleset ruleset)
+    {
+        var normalized = Normalize(raw);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        return ruleset.IsTokenBlocked(normalized, appliesTo);
+    }
+
+    private static bool IsForcedNonEntity(string raw, FeedbackPolicyRuleset ruleset)
+    {
+        var normalized = Normalize(raw);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        if (!ruleset.TokenTypeOverrides.TryGetValue(normalized, out var forcedType))
+            return false;
+
+        return forcedType is "STOPWORD" or "CONNECTIVE" or "TEMPORAL" or "OTHER";
+    }
+
+    private static CanonicalEntity? TryResolveByFeedbackRules(
+        string raw,
+        string expectedKind,
+        List<CanonicalEntity> entities,
+        FeedbackPolicyRuleset ruleset)
+    {
+        var normalized = Normalize(raw);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return null;
+
+        if (ruleset.UserAliasMap.TryGetValue(normalized, out var aliasEntityId))
+        {
+            var aliasCanonical = ruleset.ResolveCanonical(aliasEntityId);
+            var resolved = entities.FirstOrDefault(x => x.Id == aliasCanonical);
+            if (resolved != null && IsExpectedKind(resolved, expectedKind))
+                return resolved;
+        }
+
+        foreach (var rule in ruleset.ForceLinkRules)
+        {
+            if (!ForceLinkMatches(rule, raw, normalized))
+                continue;
+
+            var canonicalId = ruleset.ResolveCanonical(rule.EntityId);
+            var resolved = entities.FirstOrDefault(x => x.Id == canonicalId);
+            if (resolved != null && IsExpectedKind(resolved, expectedKind))
+                return resolved;
+        }
+
+        return null;
+    }
+
+    private static bool ForceLinkMatches(FeedbackForceLinkRule rule, string raw, string normalized)
+    {
+        return rule.PatternKind.ToUpperInvariant() switch
+        {
+            "EXACT" => string.Equals(raw.Trim(), rule.PatternValue.Trim(), StringComparison.OrdinalIgnoreCase),
+            "NORMALIZED" => string.Equals(normalized, Normalize(rule.PatternValue), StringComparison.OrdinalIgnoreCase),
+            "REGEX" => Regex.IsMatch(raw, rule.PatternValue, RegexOptions.IgnoreCase),
+            _ => false
+        };
+    }
+
+    private static bool IsExpectedKind(CanonicalEntity entity, string expectedKind)
+    {
+        if (string.IsNullOrWhiteSpace(expectedKind))
+            return true;
+
+        return string.Equals(entity.Kind, expectedKind, StringComparison.OrdinalIgnoreCase);
     }
 
     private static IEnumerable<RoleMention> ExtractRoleMentions(string content)

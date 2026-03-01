@@ -1,5 +1,7 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using DiarioIntelligente.Core.Interfaces;
+using DiarioIntelligente.Core.DTOs;
 using DiarioIntelligente.Core.Models;
 using DiarioIntelligente.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -60,6 +62,7 @@ public class EntryProcessingService : BackgroundService
         var energyRepo = scope.ServiceProvider.GetRequiredService<IEnergyLogRepository>();
         var searchProjectionService = scope.ServiceProvider.GetRequiredService<ISearchProjectionService>();
         var cognitiveGraphService = scope.ServiceProvider.GetRequiredService<ICognitiveGraphService>();
+        var feedbackPolicyService = scope.ServiceProvider.GetRequiredService<IFeedbackPolicyService>();
         var entry = await entryRepo.GetByIdAsync(job.EntryId, job.UserId);
 
         if (entry == null)
@@ -80,6 +83,8 @@ public class EntryProcessingService : BackgroundService
         }
 
         var content = entry.Content;
+        var feedbackRuleset = await feedbackPolicyService.GetRulesetAsync(job.UserId, ct);
+        var extractionContent = ApplyPreExtractionFiltering(content, feedbackRuleset);
         var analysis = new DiarioIntelligente.Core.DTOs.AiAnalysisResult();
         float[] embedding = Array.Empty<float>();
         var hasAiAnalysis = aiService.IsConfigured;
@@ -97,12 +102,12 @@ public class EntryProcessingService : BackgroundService
         if (hasAiAnalysis)
         {
             _logger.LogInformation("Analyzing entry {EntryId} with AI", job.EntryId);
-            analysis = await aiService.AnalyzeEntryAsync(content);
+            analysis = await aiService.AnalyzeEntryAsync(extractionContent);
             analysis = await EntryAnalysisSanitizer.SanitizeAsync(db, entry.UserId, content, analysis, ct);
         }
 
         // Step 3: Update canonical graph and ledger
-        await cognitiveGraphService.ProcessEntryAsync(entry, analysis, ct);
+        await cognitiveGraphService.ProcessEntryAsync(entry, analysis, feedbackRuleset, ct);
 
         if (!hasAiAnalysis)
         {
@@ -297,5 +302,29 @@ public class EntryProcessingService : BackgroundService
         }
 
         await db.SaveChangesAsync(ct);
+    }
+
+    private static string ApplyPreExtractionFiltering(string content, FeedbackPolicyRuleset ruleset)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return content;
+
+        var filtered = content;
+        var blocked = ruleset.BlockedTokensAny
+            .Concat(ruleset.BlockedTokensPerson)
+            .Concat(ruleset.BlockedTokensGoal)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var token in blocked)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                continue;
+
+            var pattern = $@"\b{Regex.Escape(token)}\b";
+            filtered = Regex.Replace(filtered, pattern, " ", RegexOptions.IgnoreCase);
+        }
+
+        return filtered;
     }
 }

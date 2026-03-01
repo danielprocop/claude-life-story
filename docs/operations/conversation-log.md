@@ -235,3 +235,33 @@ Questa conversazione ha consolidato la direzione del progetto.
 - test e build:
   - `dotnet test` backend verde: 20 test passati
   - `npm run build` frontend verde (resta warning budget SCSS dashboard)
+
+## 2026-03-01
+
+### Aggiornamento successivo
+
+- implementato feedback system admin template-based con persistenza e versionamento policy:
+  - nuove tabelle: `FeedbackCases`, `FeedbackActions`, `PolicyVersions`, `EntityRedirects`, `FeedbackReplayJobs`
+  - bootstrap schema aggiornato per PostgreSQL e Sqlite
+- introdotti servizi:
+  - `FeedbackPolicyService` (policy compiler + cache per `policyVersion/userId`)
+  - `FeedbackAdminService` (preview/apply/revert/review/debug)
+  - `FeedbackReplayService` + queue per replay/backfill mirato
+- nuovi endpoint admin:
+  - `POST /api/admin/feedback/cases/preview`
+  - `POST /api/admin/feedback/cases/apply`
+  - `GET /api/admin/feedback/cases`
+  - `GET /api/admin/feedback/cases/{id}`
+  - `POST /api/admin/feedback/cases/{id}/revert`
+  - `GET /api/admin/review-queue`
+  - `GET /api/admin/entities/search`
+  - `GET /api/admin/entities/{id}/debug`
+  - `GET /api/admin/policy/version`
+  - `GET /api/admin/policy/summary`
+- integrazione ruleset nella pipeline:
+  - pre-filter token bloccati in entry processing
+  - force-link/alias override in entity resolution
+  - canonicalizzazione redirect su search/node-view
+- nuova documentazione: `docs/feedback-system.md`
+- test aggiunti: `FeedbackSystemTests` con scenari G1..G5 (block token, merge redirect, change type, alias linking, auditability)
+- suite backend aggiornata: `dotnet test` verde con 25 test passati
