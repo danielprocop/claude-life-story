@@ -532,3 +532,21 @@ Questa conversazione ha consolidato la direzione del progetto.
   - nuova regression: multi-sentence entry -> usa solo topic primario
   - nuova regression: no creazione nodi per `pizza/pasta/ore`
   - suite backend verde: `39/39`.
+
+### Aggiornamento successivo
+
+- richiesta operativa: spegnere ambiente AWS quando non in uso.
+- azioni eseguite:
+  - `aws apprunner pause-service --service-arn arn:aws:apprunner:eu-west-1:388592345191:service/diario-intelligente-api/d2d1e2761672485db4a74787a791c05c`
+    - stato confermato: `PAUSED`
+  - `aws rds stop-db-instance --db-instance-identifier diario-intelligente-db --region eu-west-1`
+    - stato corrente: `stopping` (transizione in corso verso `stopped`)
+  - `aws amplify update-branch --app-id d35nn0pbd8bxxa --branch-name main --no-enable-auto-build --region eu-west-1`
+    - `enableAutoBuild=false` sul branch `main`
+- nota costi:
+  - OpenSearch domain `diario-search-dev` resta `Active` (servizio classico non supporta pausa).
+  - per azzerare anche quel costo bisogna cancellare il domain e ricrearlo quando serve.
+- comandi di riaccensione:
+  - `aws apprunner resume-service --service-arn arn:aws:apprunner:eu-west-1:388592345191:service/diario-intelligente-api/d2d1e2761672485db4a74787a791c05c`
+  - `aws rds start-db-instance --db-instance-identifier diario-intelligente-db --region eu-west-1`
+  - `aws amplify update-branch --app-id d35nn0pbd8bxxa --branch-name main --enable-auto-build --region eu-west-1`
