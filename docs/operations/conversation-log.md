@@ -453,3 +453,21 @@ Questa conversazione ha consolidato la direzione del progetto.
     - duplicate within kind = 0
     - event-like entities = 0
     - missing amounts events = 0
+
+### Aggiornamento successivo
+
+- eseguito nuovo ciclo di test "all nodes" su ambiente prod con token Cognito rigenerato:
+  - test backend locali: `dotnet test` verde (`34/34`)
+  - sweep API su tutti i nodi (`GET /api/nodes`, `GET /api/nodes/{id}`, `GET /api/admin/entities/{id}/debug`)
+  - nessun errore tecnico di fetch/view/debug sui nodi testati
+- emerso comportamento non stabile della quality queue dopo merge massivi T3:
+  - applicare automaticamente tutti i suggerimenti `DUPLICATE_ENTITIES` puo causare collasso temporaneo del grafo
+  - recovery verificata con `POST /api/operations/rebuild/memory` (entry preservate, nodi rigenerati)
+- stato finale del test:
+  - file output sweep: `.runlogs/node-sweep/20260301-182701/summary.json`
+  - `entries=100`, `totalNodes=31`, `errors=0`, `warnings=0`, `debugFailures=0`
+  - review queue ancora non stabile (`DUPLICATE_ENTITIES` ricorrenti)
+- audit Aurora finale (stessa user scope):
+  - `.runlogs/data-quality/20260301-182743/audit/report.md`
+  - segnali residui: cross-kind=1, duplicate-within-kind=5, event-like=5, missing-amount-events=3
+  - duplicati principali: `Adi` (person), `Evento 2026-03-01` e altri eventi con stesso giorno/titolo normalizzato
