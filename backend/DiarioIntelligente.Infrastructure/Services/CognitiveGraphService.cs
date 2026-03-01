@@ -25,6 +25,47 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     };
 
     private static readonly string[] EventKeywords = { "cena", "pranzo", "spesa", "aperitivo", "uscita" };
+    private static readonly string[] SportsContextHints =
+    {
+        "giocher",
+        "partita",
+        "match",
+        "campionato",
+        "serie a",
+        "champions",
+        "derby",
+        "gol",
+        "allenatore",
+        "squadra",
+        "club",
+        "vs",
+        "contro"
+    };
+    private static readonly HashSet<string> KnownTeamTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "milan",
+        "inter",
+        "juventus",
+        "roma",
+        "lazio",
+        "napoli",
+        "atalanta",
+        "fiorentina",
+        "torino",
+        "bologna",
+        "genoa",
+        "verona",
+        "parma",
+        "monza",
+        "como",
+        "udinese",
+        "cagliari",
+        "lecce",
+        "empoli",
+        "arsenal",
+        "barcelona",
+        "realmadrid"
+    };
     private static readonly Regex ParentheticalRoleRegex =
         new(@"(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)\s*\((?<role>[A-Za-zÀ-ÿ ]+)\)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex CapitalizedTokenRegex =
@@ -35,6 +76,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         new(@"\b(?:a|in|da|al|alla|nel|nella|sul|sulla|presso)\s+(?<place>[A-ZÀ-Ý][A-Za-zÀ-ÿ'’\-]{2,})\b", RegexOptions.Compiled);
     private static readonly Regex AmountRegex =
         new(@"(?<amount>\d+(?:[.,]\d+)?)\s*(?:euro|€)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex TimeTokenRegex =
+        new(@"^\d{1,2}(?::\d{2})?$", RegexOptions.Compiled);
 
     private readonly AppDbContext _db;
     private readonly ISearchProjectionService _searchProjectionService;
@@ -1110,17 +1153,34 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     private static IEnumerable<string> ExtractStandalonePersonMentions(string content, AiAnalysisResult analysis)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var nonPersonLabels = analysis.Concepts
+            .Where(x => !string.Equals(x.Type, "person", StringComparison.OrdinalIgnoreCase))
+            .Select(x => Normalize(x.Label))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var concept in analysis.Concepts.Where(x => x.Type == "person"))
         {
-            if (!string.IsNullOrWhiteSpace(concept.Label) && seen.Add(concept.Label.Trim()))
-                yield return concept.Label.Trim();
+            if (string.IsNullOrWhiteSpace(concept.Label))
+                continue;
+
+            var label = concept.Label.Trim();
+            var normalized = Normalize(label);
+            if (string.IsNullOrWhiteSpace(normalized))
+                continue;
+            if (nonPersonLabels.Contains(normalized))
+                continue;
+            if (!IsPlausiblePersonToken(content, label))
+                continue;
+
+            if (seen.Add(label))
+                yield return label;
         }
 
         foreach (Match match in CapitalizedTokenRegex.Matches(content))
         {
             var token = match.Groups["name"].Value.Trim();
-            if (token.Length < 3 || IsCommonNonNameToken(token))
+            if (!IsPlausiblePersonToken(content, token))
                 continue;
 
             if (seen.Add(token))
@@ -1137,7 +1197,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 continue;
 
             var token = match.Groups["name"].Value.Trim();
-            if (token.Length < 3 || IsCommonNonNameToken(token))
+            if (!IsPlausiblePersonToken(content, token))
                 continue;
 
             if (seen.Add(token))
@@ -1425,12 +1485,23 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     private static HashSet<string> BuildStrongPersonHints(string content, AiAnalysisResult analysis)
     {
         var hints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var nonPersonLabels = analysis.Concepts
+            .Where(x => !string.Equals(x.Type, "person", StringComparison.OrdinalIgnoreCase))
+            .Select(x => Normalize(x.Label))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var concept in analysis.Concepts.Where(x => string.Equals(x.Type, "person", StringComparison.OrdinalIgnoreCase)))
         {
             var normalized = Normalize(concept.Label ?? string.Empty);
             if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                if (nonPersonLabels.Contains(normalized))
+                    continue;
+                if (!IsPlausiblePersonToken(content, concept.Label ?? string.Empty))
+                    continue;
                 hints.Add(normalized);
+            }
         }
 
         foreach (var binding in ExtractRoleNameBindings(content))
@@ -1478,6 +1549,37 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         }
 
         return hints;
+    }
+
+    private static bool IsPlausiblePersonToken(string content, string token)
+    {
+        var normalized = Normalize(token);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+        if (normalized.Length < 3)
+            return false;
+        if (IsCommonNonNameToken(token))
+            return false;
+        if (TimeTokenRegex.IsMatch(token.Trim()))
+            return false;
+        if (IsLikelyTeamMention(content, token, normalized))
+            return false;
+
+        return true;
+    }
+
+    private static bool IsLikelyTeamMention(string content, string rawLabel, string normalizedLabel)
+    {
+        var lower = content.ToLowerInvariant();
+        var hasSportsContext = SportsContextHints.Any(lower.Contains);
+        if (!hasSportsContext)
+            return false;
+
+        if (KnownTeamTokens.Contains(normalizedLabel))
+            return true;
+
+        var escaped = Regex.Escape(rawLabel.Trim());
+        return Regex.IsMatch(content, $@"\b(?:il|lo|la|i|gli|le|l')\s*{escaped}\b", RegexOptions.IgnoreCase);
     }
 
     private static bool HasExistingPersonMatch(List<CanonicalEntity> entities, string rawName)
@@ -1631,6 +1733,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         {
             "person" => "person",
             "place" or "location" or "city" or "country" => "place",
+            "team" or "club" => "team",
+            "organization" or "company" => "organization",
             "goal" or "desire" or "objective" => "goal",
             "project" => "project",
             "activity" or "task" or "habit" => "activity",
@@ -1761,6 +1865,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             "oggi" or
             "ieri" or
             "domani" or
+            "alle" or
             "sono" or
             "siamo" or
             "abbiamo" or

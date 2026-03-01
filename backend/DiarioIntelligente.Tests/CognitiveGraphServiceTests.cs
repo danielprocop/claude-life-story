@@ -290,6 +290,40 @@ public class CognitiveGraphServiceTests
         Assert.Equal("place", node.Kind);
     }
 
+    [Fact]
+    public async Task Avoids_Person_False_Positive_For_Stopword_And_Sports_Team()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        var analysis = new AiAnalysisResult
+        {
+            Concepts =
+            [
+                new ExtractedConcept { Label = "alle", Type = "person" },
+                new ExtractedConcept { Label = "Milan", Type = "person" },
+                new ExtractedConcept { Label = "Milan", Type = "team" }
+            ]
+        };
+
+        await fixture.ProcessAsync(user.Id, "alle 12:30 oggi giochera il Milan.", analysis);
+
+        await using var db = fixture.CreateDbContext();
+        var alleKinds = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.NormalizedCanonicalName == "alle")
+            .Select(x => x.Kind)
+            .ToListAsync();
+
+        var milanKinds = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.NormalizedCanonicalName == "milan")
+            .Select(x => x.Kind)
+            .ToListAsync();
+
+        Assert.DoesNotContain("person", alleKinds);
+        Assert.DoesNotContain("person", milanKinds);
+        Assert.Contains("team", milanKinds);
+    }
+
     private sealed class TestFixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;

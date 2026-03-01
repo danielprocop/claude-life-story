@@ -1,4 +1,8 @@
 using System.Text.Json;
+using System.Globalization;
+using System.Text;
+using System.Text.RegularExpressions;
+using DiarioIntelligente.Core.DTOs;
 using DiarioIntelligente.Core.Interfaces;
 using DiarioIntelligente.Core.Models;
 using DiarioIntelligente.Infrastructure.Data;
@@ -8,6 +12,75 @@ namespace DiarioIntelligente.API.Services;
 
 public class EntryProcessingService : BackgroundService
 {
+    private static readonly Regex TimeTokenRegex =
+        new(@"^\d{1,2}(?::\d{2})?$", RegexOptions.Compiled);
+    private static readonly HashSet<string> NonPersonStopTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "alle",
+        "alla",
+        "oggi",
+        "ieri",
+        "domani",
+        "sono",
+        "siamo",
+        "abbiamo",
+        "ho",
+        "poi",
+        "con",
+        "mia",
+        "mio",
+        "le",
+        "la",
+        "il",
+        "un",
+        "una",
+        "devo",
+        "mi",
+        "ha",
+        "hanno"
+    };
+    private static readonly string[] SportsContextHints =
+    {
+        "giocher",
+        "partita",
+        "match",
+        "campionato",
+        "serie a",
+        "champions",
+        "derby",
+        "gol",
+        "allenatore",
+        "squadra",
+        "club",
+        "vs",
+        "contro"
+    };
+    private static readonly HashSet<string> KnownTeamTokens = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "milan",
+        "inter",
+        "juventus",
+        "roma",
+        "lazio",
+        "napoli",
+        "atalanta",
+        "fiorentina",
+        "torino",
+        "bologna",
+        "genoa",
+        "verona",
+        "parma",
+        "monza",
+        "como",
+        "udinese",
+        "cagliari",
+        "lecce",
+        "empoli",
+        "arsenal",
+        "barcelona",
+        "realmadrid"
+    };
+
     private readonly EntryProcessingQueue _queue;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<EntryProcessingService> _logger;
@@ -98,6 +171,7 @@ public class EntryProcessingService : BackgroundService
         {
             _logger.LogInformation("Analyzing entry {EntryId} with AI", job.EntryId);
             analysis = await aiService.AnalyzeEntryAsync(content);
+            analysis = await SanitizeAnalysisAsync(db, entry.UserId, content, analysis, ct);
         }
 
         // Step 3: Update canonical graph and ledger
@@ -267,6 +341,170 @@ public class EntryProcessingService : BackgroundService
         await UpsertProcessingStateAsync(db, entry, hasAiAnalysis, ct);
 
         _logger.LogInformation("Entry {EntryId} processing completed", job.EntryId);
+    }
+
+    private static async Task<AiAnalysisResult> SanitizeAnalysisAsync(
+        AppDbContext db,
+        Guid userId,
+        string content,
+        AiAnalysisResult analysis,
+        CancellationToken ct)
+    {
+        if (analysis.Concepts.Count == 0)
+            return analysis;
+
+        var kindOverrides = await db.PersonalPolicies
+            .Where(policy =>
+                policy.UserId == userId &&
+                policy.PolicyKey == "entity_kind_override" &&
+                policy.Scope != null &&
+                policy.Scope.StartsWith("name:"))
+            .Select(policy => new { policy.Scope, policy.PolicyValue })
+            .ToListAsync(ct);
+
+        var overridesByName = kindOverrides
+            .Where(item => !string.IsNullOrWhiteSpace(item.Scope) && item.Scope!.Length > 5)
+            .ToDictionary(
+                item => item.Scope![5..],
+                item => NormalizePolicyKind(item.PolicyValue),
+                StringComparer.OrdinalIgnoreCase);
+
+        var nonPersonLabels = analysis.Concepts
+            .Where(concept =>
+            {
+                var type = NormalizeToken(concept.Type);
+                return !string.IsNullOrWhiteSpace(concept.Label) && type != "person";
+            })
+            .Select(concept => NormalizeToken(concept.Label))
+            .Where(label => !string.IsNullOrWhiteSpace(label))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var sanitized = new List<ExtractedConcept>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var concept in analysis.Concepts)
+        {
+            if (string.IsNullOrWhiteSpace(concept.Label))
+                continue;
+
+            var rawLabel = concept.Label.Trim();
+            var normalizedLabel = NormalizeToken(rawLabel);
+            if (string.IsNullOrWhiteSpace(normalizedLabel))
+                continue;
+
+            var normalizedType = NormalizeToken(concept.Type);
+            var targetType = ResolveTargetConceptType(
+                rawLabel,
+                normalizedLabel,
+                normalizedType,
+                content,
+                nonPersonLabels,
+                overridesByName);
+
+            if (targetType == null)
+                continue;
+
+            var dedupeKey = $"{normalizedLabel}:{targetType}";
+            if (!seen.Add(dedupeKey))
+                continue;
+
+            sanitized.Add(new ExtractedConcept
+            {
+                Label = rawLabel,
+                Type = targetType
+            });
+        }
+
+        analysis.Concepts = sanitized;
+        return analysis;
+    }
+
+    private static string? ResolveTargetConceptType(
+        string rawLabel,
+        string normalizedLabel,
+        string normalizedType,
+        string content,
+        IReadOnlySet<string> nonPersonLabels,
+        IReadOnlyDictionary<string, string> overridesByName)
+    {
+        if (overridesByName.TryGetValue(normalizedLabel, out var overrideKind))
+        {
+            if (overrideKind == "not_person")
+                return normalizedType == "person" ? null : string.IsNullOrWhiteSpace(normalizedType) ? "generic" : normalizedType;
+
+            return overrideKind;
+        }
+
+        if (normalizedType != "person")
+            return string.IsNullOrWhiteSpace(normalizedType) ? "generic" : normalizedType;
+
+        if (NonPersonStopTokens.Contains(normalizedLabel))
+            return null;
+
+        if (TimeTokenRegex.IsMatch(rawLabel))
+            return null;
+
+        if (nonPersonLabels.Contains(normalizedLabel))
+            return null;
+
+        if (IsLikelyTeamMention(content, rawLabel, normalizedLabel))
+            return "team";
+
+        return "person";
+    }
+
+    private static bool IsLikelyTeamMention(string content, string rawLabel, string normalizedLabel)
+    {
+        var lower = content.ToLowerInvariant();
+        var hasSportsContext = SportsContextHints.Any(lower.Contains);
+        if (!hasSportsContext)
+            return false;
+
+        if (KnownTeamTokens.Contains(normalizedLabel))
+            return true;
+
+        var escaped = Regex.Escape(rawLabel.Trim());
+        return Regex.IsMatch(content, $@"\b(?:il|lo|la|i|gli|le|l')\s*{escaped}\b", RegexOptions.IgnoreCase);
+    }
+
+    private static string NormalizePolicyKind(string rawValue)
+    {
+        var normalized = NormalizeToken(rawValue);
+        return normalized switch
+        {
+            "persona" => "person",
+            "luogo" => "place",
+            "squadra" => "team",
+            "organizzazione" => "organization",
+            "progetto" => "project",
+            "attivita" => "activity",
+            "emozione" => "emotion",
+            "idea" => "idea",
+            "problema" => "problem",
+            "finanza" => "finance",
+            "notperson" or "nonperson" => "not_person",
+            _ => normalized
+        };
+    }
+
+    private static string NormalizeToken(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return string.Empty;
+
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder();
+        foreach (var c in normalized)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category == UnicodeCategory.NonSpacingMark)
+                continue;
+
+            if (char.IsLetterOrDigit(c))
+                builder.Append(char.ToLowerInvariant(c));
+        }
+
+        return builder.ToString();
     }
 
     private static async Task UpsertProcessingStateAsync(

@@ -2,7 +2,11 @@ using DiarioIntelligente.API.Services;
 using DiarioIntelligente.Core.DTOs;
 using DiarioIntelligente.Core.Interfaces;
 using DiarioIntelligente.Core.Models;
+using DiarioIntelligente.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
+using System.Globalization;
+using System.Text;
 
 namespace DiarioIntelligente.API.Controllers;
 
@@ -13,17 +17,20 @@ public class EntriesController : AuthenticatedController
     private readonly EntryProcessingQueue _processingQueue;
     private readonly UserMemoryRebuildQueue _rebuildQueue;
     private readonly ISearchProjectionService _searchProjectionService;
+    private readonly AppDbContext _db;
 
     public EntriesController(
         IEntryRepository entryRepo,
         EntryProcessingQueue processingQueue,
         UserMemoryRebuildQueue rebuildQueue,
-        ISearchProjectionService searchProjectionService)
+        ISearchProjectionService searchProjectionService,
+        AppDbContext db)
     {
         _entryRepo = entryRepo;
         _processingQueue = processingQueue;
         _rebuildQueue = rebuildQueue;
         _searchProjectionService = searchProjectionService;
+        _db = db;
     }
 
     [HttpPost]
@@ -154,5 +161,169 @@ public class EntriesController : AuthenticatedController
         await _searchProjectionService.DeleteEntryAsync(id, entry.UserId, HttpContext.RequestAborted);
         await _rebuildQueue.EnqueueAsync(entry.UserId, HttpContext.RequestAborted);
         return NoContent();
+    }
+
+    [HttpPost("{id:guid}/feedback/entity")]
+    public async Task<ActionResult<EntryEntityFeedbackResponse>> SubmitEntityFeedback(
+        Guid id,
+        [FromBody] EntryEntityFeedbackRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Label))
+            return BadRequest(new { error = "Il campo label e obbligatorio." });
+
+        if (string.IsNullOrWhiteSpace(request.ExpectedKind))
+            return BadRequest(new { error = "Il campo expectedKind e obbligatorio." });
+
+        var entry = await _entryRepo.GetByIdAsync(id, GetUserId());
+        if (entry == null)
+            return NotFound();
+
+        var normalizedLabel = NormalizeToken(request.Label);
+        if (string.IsNullOrWhiteSpace(normalizedLabel))
+            return BadRequest(new { error = "Label non valida." });
+
+        var expectedKind = NormalizeExpectedKind(request.ExpectedKind);
+        if (expectedKind == null)
+        {
+            return BadRequest(new
+            {
+                error = "expectedKind non supportato.",
+                supportedKinds = new[]
+                {
+                    "person",
+                    "place",
+                    "team",
+                    "organization",
+                    "project",
+                    "activity",
+                    "emotion",
+                    "idea",
+                    "problem",
+                    "finance",
+                    "not_person"
+                }
+            });
+        }
+
+        var scope = $"name:{normalizedLabel}";
+        var existing = await _db.PersonalPolicies.FirstOrDefaultAsync(policy =>
+            policy.UserId == entry.UserId &&
+            policy.PolicyKey == "entity_kind_override" &&
+            policy.Scope == scope,
+            HttpContext.RequestAborted);
+
+        if (existing == null)
+        {
+            _db.PersonalPolicies.Add(new PersonalPolicy
+            {
+                Id = Guid.NewGuid(),
+                UserId = entry.UserId,
+                PolicyKey = "entity_kind_override",
+                PolicyValue = expectedKind,
+                Scope = scope,
+                Origin = "explicit",
+                Confidence = 1.0f,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            existing.PolicyValue = expectedKind;
+            existing.Origin = "explicit";
+            existing.Confidence = 1.0f;
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Note))
+        {
+            var noteScope = $"entry:{entry.Id}:name:{normalizedLabel}";
+            var existingNote = await _db.PersonalPolicies.FirstOrDefaultAsync(policy =>
+                policy.UserId == entry.UserId &&
+                policy.PolicyKey == "entity_feedback_note" &&
+                policy.Scope == noteScope,
+                HttpContext.RequestAborted);
+
+            var safeNote = request.Note.Trim();
+            if (safeNote.Length > 350)
+                safeNote = safeNote[..350];
+
+            if (existingNote == null)
+            {
+                _db.PersonalPolicies.Add(new PersonalPolicy
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = entry.UserId,
+                    PolicyKey = "entity_feedback_note",
+                    PolicyValue = safeNote,
+                    Scope = noteScope,
+                    Origin = "explicit",
+                    Confidence = 1.0f,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                existingNote.PolicyValue = safeNote;
+                existingNote.Origin = "explicit";
+                existingNote.Confidence = 1.0f;
+                existingNote.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        await _db.SaveChangesAsync(HttpContext.RequestAborted);
+        await _rebuildQueue.EnqueueAsync(entry.UserId, HttpContext.RequestAborted);
+
+        return Ok(new EntryEntityFeedbackResponse(
+            entry.Id,
+            request.Label.Trim(),
+            expectedKind,
+            RebuildQueued: true,
+            Message: "Feedback salvato. Ricalcolo memoria avviato in background."
+        ));
+    }
+
+    private static string? NormalizeExpectedKind(string rawKind)
+    {
+        if (string.IsNullOrWhiteSpace(rawKind))
+            return null;
+
+        var normalized = NormalizeToken(rawKind);
+        return normalized switch
+        {
+            "persona" or "person" => "person",
+            "luogo" or "place" or "location" or "citta" or "city" => "place",
+            "squadra" or "team" or "club" => "team",
+            "organizzazione" or "organization" or "company" => "organization",
+            "progetto" or "project" => "project",
+            "attivita" or "activity" or "task" or "habit" => "activity",
+            "emozione" or "emotion" or "feeling" => "emotion",
+            "idea" or "belief" or "philosophy" => "idea",
+            "problema" or "problem" or "blocker" => "problem",
+            "finanza" or "finance" or "money" => "finance",
+            "notperson" or "nonperson" or "notentity" or "ignore" or "none" => "not_person",
+            _ => null
+        };
+    }
+
+    private static string NormalizeToken(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return string.Empty;
+
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder();
+        foreach (var c in normalized)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category == UnicodeCategory.NonSpacingMark)
+                continue;
+
+            if (char.IsLetterOrDigit(c))
+                builder.Append(char.ToLowerInvariant(c));
+        }
+
+        return builder.ToString();
     }
 }

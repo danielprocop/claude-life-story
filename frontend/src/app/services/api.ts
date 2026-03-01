@@ -18,6 +18,14 @@ export interface RelatedEntryResponse {
   sharedConceptCount: number;
 }
 
+export interface EntryEntityFeedbackResponse {
+  entryId: string;
+  label: string;
+  appliedKind: string;
+  rebuildQueued: boolean;
+  message: string;
+}
+
 export interface EntryListResponse {
   id: string;
   contentPreview: string;
@@ -403,6 +411,19 @@ export class Api {
 
   getRelatedEntries(id: string, limit = 6): Observable<RelatedEntryResponse[]> {
     return this.http.get<RelatedEntryResponse[]>(`${this.baseUrl}/entries/${id}/related?limit=${limit}`);
+  }
+
+  submitEntryEntityFeedback(
+    id: string,
+    label: string,
+    expectedKind: string,
+    note?: string
+  ): Observable<EntryEntityFeedbackResponse> {
+    return this.http.post<EntryEntityFeedbackResponse>(`${this.baseUrl}/entries/${id}/feedback/entity`, {
+      label,
+      expectedKind,
+      note,
+    });
   }
 
   deleteEntry(id: string): Observable<void> {

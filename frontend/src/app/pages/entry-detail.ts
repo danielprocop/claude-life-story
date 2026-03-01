@@ -2,7 +2,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Api, EntryResponse, RelatedEntryResponse } from '../services/api';
+import { Api, ConceptResponse, EntryResponse, RelatedEntryResponse } from '../services/api';
 
 @Component({
   selector: 'app-entry-detail',
@@ -24,6 +24,10 @@ export class EntryDetailPage implements OnInit {
   readonly saving = signal(false);
   readonly deleting = signal(false);
   readonly statusMessage = signal('');
+  readonly feedbackTerm = signal('');
+  readonly feedbackKind = signal('person');
+  readonly feedbackNote = signal('');
+  readonly feedbackSubmitting = signal(false);
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -50,6 +54,35 @@ export class EntryDetailPage implements OnInit {
   private loadRelatedEntries(id: string): void {
     this.api.getRelatedEntries(id).subscribe({
       next: (entries) => this.relatedEntries.set(entries),
+    });
+  }
+
+  setFeedbackFromConcept(concept: ConceptResponse): void {
+    this.feedbackTerm.set(concept.label);
+    this.feedbackKind.set(this.normalizeFeedbackKind(concept.type));
+    this.statusMessage.set('');
+  }
+
+  sendEntityFeedback(): void {
+    const entry = this.entry();
+    const term = this.feedbackTerm().trim();
+    const kind = this.feedbackKind().trim();
+
+    if (!entry || !term || !kind || this.feedbackSubmitting()) return;
+
+    this.feedbackSubmitting.set(true);
+    this.statusMessage.set('');
+
+    this.api.submitEntryEntityFeedback(entry.id, term, kind, this.feedbackNote().trim() || undefined).subscribe({
+      next: (response) => {
+        this.feedbackSubmitting.set(false);
+        this.feedbackNote.set('');
+        this.statusMessage.set(response.message);
+      },
+      error: () => {
+        this.feedbackSubmitting.set(false);
+        this.statusMessage.set('Impossibile inviare il feedback su questa entry.');
+      },
     });
   }
 
@@ -121,5 +154,35 @@ export class EntryDetailPage implements OnInit {
         this.statusMessage.set('Impossibile eliminare questa entry.');
       },
     });
+  }
+
+  private normalizeFeedbackKind(rawType: string): string {
+    const normalized = (rawType ?? '').trim().toLowerCase();
+    if (!normalized) return 'person';
+
+    if (normalized === 'location' || normalized === 'city' || normalized === 'country') return 'place';
+    if (normalized === 'club') return 'team';
+    if (normalized === 'company') return 'organization';
+    if (normalized === 'task' || normalized === 'habit') return 'activity';
+    if (normalized === 'feeling') return 'emotion';
+    if (normalized === 'belief' || normalized === 'philosophy') return 'idea';
+    if (normalized === 'blocker') return 'problem';
+    if (
+      normalized === 'person' ||
+      normalized === 'place' ||
+      normalized === 'team' ||
+      normalized === 'organization' ||
+      normalized === 'project' ||
+      normalized === 'activity' ||
+      normalized === 'emotion' ||
+      normalized === 'idea' ||
+      normalized === 'problem' ||
+      normalized === 'finance' ||
+      normalized === 'not_person'
+    ) {
+      return normalized;
+    }
+
+    return 'person';
   }
 }
