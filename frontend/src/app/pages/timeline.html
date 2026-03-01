@@ -32,12 +32,10 @@
     <div class="state-card empty">Nessuna entry ancora. Vai a scrivere qualcosa!</div>
   } @else {
     <div class="timeline-controls">
-      <button type="button" (click)="loadPrevious()" [disabled]="!canLoadPrevious()">← Indietro</button>
       <div class="timeline-meta">
         <span class="window-label">{{ windowLabel() }}</span>
-        <span class="window-count">{{ totalEntriesInWindow() }} entry nel range</span>
+        <span class="window-count">{{ windowEntriesCount() }} entry visibili</span>
       </div>
-      <button type="button" (click)="loadNext()" [disabled]="!canLoadNext()">Avanti →</button>
     </div>
 
     <div class="timeline-scroll-wrap">
@@ -86,8 +84,11 @@
         <div class="timeline-spacer" aria-hidden="true"></div>
       </div>
 
-      @if (scrollRightVisible()) {
-        <p class="scroll-hint">Suggerimento: scorri orizzontalmente per vedere altri periodi.</p>
+      @if (scrollLeftVisible() || scrollRightVisible()) {
+        <p class="scroll-hint">Scorri orizzontalmente: il range si estende automaticamente.</p>
+      }
+      @if (loadingMorePrevious() || loadingMoreNext()) {
+        <p class="scroll-loading">Caricamento altri periodi...</p>
       }
     </div>
   }
