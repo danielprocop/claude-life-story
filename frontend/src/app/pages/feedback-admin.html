@@ -1,0 +1,196 @@
+<section class="feedback-admin-page">
+  <header class="page-header">
+    <div>
+      <h2>Feedback Admin</h2>
+      <p>Workflow template-based: review queue -> preview -> apply -> replay.</p>
+    </div>
+    <button type="button" class="secondary-button" (click)="reload()">Aggiorna</button>
+  </header>
+
+  @if (loading()) {
+    <article class="card">Caricamento feedback system...</article>
+  } @else {
+    @if (error()) {
+      <article class="card error">{{ error() }}</article>
+    }
+    @if (feedbackStatus()) {
+      <article class="card status">{{ feedbackStatus() }}</article>
+    }
+
+    <article class="card">
+      <h3>Policy state</h3>
+      <div class="stats-grid">
+        <div class="stat">
+          <span>Policy version</span>
+          <strong>{{ policyVersion()?.policyVersion ?? '-' }}</strong>
+        </div>
+        <div class="stat">
+          <span>Global actions</span>
+          <strong>{{ policySummary()?.globalActions ?? '-' }}</strong>
+        </div>
+        <div class="stat">
+          <span>User actions</span>
+          <strong>{{ policySummary()?.userActions ?? '-' }}</strong>
+        </div>
+        <div class="stat">
+          <span>Redirects</span>
+          <strong>{{ policySummary()?.redirects ?? '-' }}</strong>
+        </div>
+      </div>
+    </article>
+
+    <article class="card">
+      <h3>Assist template</h3>
+      <div class="form-row">
+        <input
+          type="text"
+          [ngModel]="assistText()"
+          (ngModelChange)="assistText.set($event)"
+          placeholder='Es: "blocca inoltre come persona"' />
+        <button type="button" class="secondary-button" (click)="assistTemplate()" [disabled]="assistLoading()">
+          {{ assistLoading() ? 'Analisi...' : 'Precompila' }}
+        </button>
+      </div>
+    </article>
+
+    <article class="card">
+      <h3>Preview / Apply</h3>
+      <div class="form-grid">
+        <label>
+          Template
+          <input type="text" [ngModel]="selectedTemplate()" (ngModelChange)="selectedTemplate.set($event)" />
+        </label>
+        <label>
+          Reason
+          <input type="text" [ngModel]="reason()" (ngModelChange)="reason.set($event)" placeholder="Motivo del feedback" />
+        </label>
+      </div>
+      <label class="payload-label">
+        Payload JSON
+        <textarea
+          rows="10"
+          [ngModel]="payloadText()"
+          (ngModelChange)="payloadText.set($event)"
+          placeholder='{"entity_id":"..."}'></textarea>
+      </label>
+      <div class="actions">
+        <button type="button" class="secondary-button" (click)="previewCase()" [disabled]="previewLoading() || applyLoading()">
+          {{ previewLoading() ? 'Preview...' : 'Preview' }}
+        </button>
+        <button type="button" class="primary-button" (click)="applyCase()" [disabled]="applyLoading() || previewLoading()">
+          {{ applyLoading() ? 'Apply...' : 'Apply' }}
+        </button>
+      </div>
+
+      @if (previewResult(); as preview) {
+        <article class="sub-card">
+          <h4>Impact preview</h4>
+          <p>
+            Entita impattate: {{ preview.impactSummary.impactedEntities }} ·
+            Mentions: {{ preview.impactSummary.mentionLinkChangesEstimate }} ·
+            Entries replay: {{ preview.impactSummary.entriesToReplay }}
+          </p>
+          @if (preview.warnings.length) {
+            <ul class="inline-list">
+              @for (warning of preview.warnings; track warning) {
+                <li>{{ warning }}</li>
+              }
+            </ul>
+          }
+        </article>
+      }
+
+      @if (applyResult(); as applied) {
+        <article class="sub-card">
+          <h4>Apply result</h4>
+          <p>Case: {{ applied.caseId }}</p>
+          <p>Policy version: {{ applied.policyVersion }}</p>
+          <p>Replay job: {{ applied.replayJob.id }} ({{ applied.replayJob.status }})</p>
+        </article>
+      }
+    </article>
+
+    <article class="card">
+      <h3>Review queue</h3>
+      @if (reviewQueue().length) {
+        <div class="queue-list">
+          @for (item of reviewQueue(); track item.issueType + item.title + item.suggestedPayloadJson) {
+            <article class="queue-item">
+              <div>
+                <p class="meta">{{ item.issueType }} · {{ item.severity }}</p>
+                <strong>{{ item.title }}</strong>
+                @if (item.evidenceSnippets.length) {
+                  <p>{{ item.evidenceSnippets[0] }}</p>
+                }
+              </div>
+              <button type="button" class="secondary-button" (click)="useQueueSuggestion(item)">Usa template</button>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty">Review queue vuota.</p>
+      }
+    </article>
+
+    <article class="card">
+      <h3>Case history</h3>
+      @if (cases().length) {
+        <div class="queue-list">
+          @for (item of cases(); track item.id) {
+            <article class="queue-item">
+              <div>
+                <p class="meta">{{ item.templateId }} · {{ item.status }} · {{ item.createdAt | date:'dd MMM yyyy, HH:mm' }}</p>
+                <strong>{{ item.reason || 'Nessun reason' }}</strong>
+              </div>
+              @if (item.status === 'APPLIED') {
+                <button type="button" class="danger-button" (click)="revertCase(item.id)">Revert</button>
+              }
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="empty">Nessun feedback case ancora applicato.</p>
+      }
+    </article>
+
+    <article class="card">
+      <h3>Entity debug</h3>
+      <div class="form-row">
+        <input
+          type="text"
+          [ngModel]="entityQuery()"
+          (ngModelChange)="entityQuery.set($event)"
+          placeholder="Cerca entita"
+          (blur)="searchEntities()" />
+        <button type="button" class="secondary-button" (click)="searchEntities()" [disabled]="entitySearchLoading()">
+          {{ entitySearchLoading() ? 'Ricerca...' : 'Cerca' }}
+        </button>
+      </div>
+      @if (entityResults().length) {
+        <div class="entity-results">
+          @for (entity of entityResults(); track entity.id) {
+            <button type="button" class="entity-item" (click)="loadEntityDebug(entity.id)">
+              {{ entity.canonicalName }} · {{ entity.kind }}
+            </button>
+          }
+        </div>
+      }
+
+      @if (entityDebugLoading()) {
+        <p class="empty">Caricamento debug...</p>
+      } @else if (entityDebug(); as debug) {
+        <article class="sub-card">
+          <h4>{{ debug.canonicalName }}</h4>
+          <p>{{ debug.kind }} · {{ debug.resolutionState }}</p>
+          @if (debug.why.length) {
+            <ul class="inline-list">
+              @for (item of debug.why; track item) {
+                <li>{{ item }}</li>
+              }
+            </ul>
+          }
+        </article>
+      }
+    </article>
+  }
+</section>

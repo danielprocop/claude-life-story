@@ -152,57 +152,6 @@
   border: 1px solid #e1e9f0;
 }
 
-.pill-feedback-button {
-  justify-self: start;
-  border: 0;
-  border-radius: 999px;
-  background: #ecf3fa;
-  color: #375069;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-
-.feedback-section {
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid #edf2f7;
-  display: grid;
-  gap: 12px;
-
-  h3 {
-    margin: 0;
-    color: #142130;
-  }
-}
-
-.feedback-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.feedback-note-label {
-  display: grid;
-  gap: 6px;
-}
-
-.feedback-grid label {
-  display: grid;
-  gap: 6px;
-}
-
-.feedback-input {
-  width: 100%;
-  border-radius: 14px;
-  border: 1px solid #d8e1e8;
-  padding: 10px 12px;
-  font: inherit;
-  color: #22303b;
-  background: #fcfdfe;
-}
-
 .concept-type {
   font-size: 11px;
   text-transform: uppercase;
@@ -254,9 +203,5 @@
 @media (max-width: 720px) {
   .entry-header {
     flex-direction: column;
-  }
-
-  .feedback-grid {
-    grid-template-columns: 1fr;
   }
 }

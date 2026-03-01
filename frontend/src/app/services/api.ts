@@ -18,14 +18,6 @@ export interface RelatedEntryResponse {
   sharedConceptCount: number;
 }
 
-export interface EntryEntityFeedbackResponse {
-  entryId: string;
-  label: string;
-  appliedKind: string;
-  rebuildQueued: boolean;
-  message: string;
-}
-
 export interface EntryListResponse {
   id: string;
   contentPreview: string;
@@ -417,6 +409,131 @@ export interface NormalizeEntitiesResponse {
   reindexed: number;
 }
 
+export interface FeedbackCaseRequest {
+  templateId: string;
+  templatePayload: Record<string, unknown>;
+  references?: Record<string, unknown>;
+  reason?: string;
+  scopeDefault?: string;
+  targetUserId?: string;
+}
+
+export interface FeedbackParsedActionResponse {
+  scope: string;
+  targetUserId: string | null;
+  actionType: string;
+  payloadJson: string;
+}
+
+export interface FeedbackImpactSummaryResponse {
+  impactedEntities: number;
+  mentionLinkChangesEstimate: number;
+  edgesToRealignEstimate: number;
+  entriesToReplay: number;
+  entityIds: string[];
+  entryIds: string[];
+}
+
+export interface FeedbackPreviewResponse {
+  parsedActions: FeedbackParsedActionResponse[];
+  impactSummary: FeedbackImpactSummaryResponse;
+  warnings: string[];
+  suggestedApply: boolean;
+}
+
+export interface FeedbackReplayJobResponse {
+  id: string;
+  status: string;
+  dryRun: boolean;
+}
+
+export interface FeedbackApplyResponse {
+  caseId: string;
+  policyVersion: number;
+  appliedActions: FeedbackParsedActionResponse[];
+  replayJob: FeedbackReplayJobResponse;
+}
+
+export interface FeedbackCaseSummaryResponse {
+  id: string;
+  createdAt: string;
+  status: string;
+  templateId: string;
+  scopeDefault: string;
+  appliedPolicyVersion: number | null;
+  reason: string | null;
+}
+
+export interface FeedbackCaseDetailResponse {
+  id: string;
+  createdAt: string;
+  createdByUserId: string;
+  createdByRole: string;
+  scopeDefault: string;
+  status: string;
+  templateId: string;
+  templatePayloadJson: string;
+  referencesJson: string | null;
+  previewSummaryJson: string | null;
+  appliedPolicyVersion: number | null;
+  reason: string | null;
+  actions: FeedbackParsedActionResponse[];
+}
+
+export interface RevertFeedbackCaseResponse {
+  caseId: string;
+  policyVersion: number;
+  revertedActions: number;
+  replayJob: FeedbackReplayJobResponse;
+}
+
+export interface FeedbackReviewQueueItemResponse {
+  issueType: string;
+  severity: string;
+  title: string;
+  entityIds: string[];
+  entryIds: string[];
+  evidenceSnippets: string[];
+  suggestedTemplateId: string;
+  suggestedPayloadJson: string;
+}
+
+export interface PolicyVersionResponse {
+  policyVersion: number;
+}
+
+export interface PolicySummaryResponse {
+  policyVersion: number;
+  globalActions: number;
+  userActions: number;
+  blockedTokens: number;
+  tokenTypeOverrides: number;
+  forceLinkRules: number;
+  aliasOverrides: number;
+  entityTypeOverrides: number;
+  redirects: number;
+}
+
+export interface EntityDebugResponse {
+  entityId: string;
+  canonicalEntityId: string;
+  redirectChain: string[];
+  kind: string;
+  canonicalName: string;
+  aliases: string[];
+  resolutionState: string;
+  why: string[];
+  relevantActions: FeedbackParsedActionResponse[];
+  evidence: string[];
+}
+
+export interface FeedbackAssistResponse {
+  suggestedTemplateId: string;
+  suggestedPayloadJson: string;
+  confidence: number;
+  rationaleShort: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -466,19 +583,6 @@ export class Api {
 
   getRelatedEntries(id: string, limit = 6): Observable<RelatedEntryResponse[]> {
     return this.http.get<RelatedEntryResponse[]>(`${this.baseUrl}/entries/${id}/related?limit=${limit}`);
-  }
-
-  submitEntryEntityFeedback(
-    id: string,
-    label: string,
-    expectedKind: string,
-    note?: string
-  ): Observable<EntryEntityFeedbackResponse> {
-    return this.http.post<EntryEntityFeedbackResponse>(`${this.baseUrl}/entries/${id}/feedback/entity`, {
-      label,
-      expectedKind,
-      note,
-    });
   }
 
   deleteEntry(id: string): Observable<void> {
@@ -601,5 +705,61 @@ export class Api {
 
   normalizeEntities(): Observable<NormalizeEntitiesResponse> {
     return this.http.post<NormalizeEntitiesResponse>(`${this.baseUrl}/operations/normalize/entities`, {});
+  }
+
+  previewFeedbackCase(request: FeedbackCaseRequest): Observable<FeedbackPreviewResponse> {
+    return this.http.post<FeedbackPreviewResponse>(`${this.baseUrl}/admin/feedback/cases/preview`, request);
+  }
+
+  applyFeedbackCase(request: FeedbackCaseRequest): Observable<FeedbackApplyResponse> {
+    return this.http.post<FeedbackApplyResponse>(`${this.baseUrl}/admin/feedback/cases/apply`, {
+      ...request,
+      apply: true,
+    });
+  }
+
+  getFeedbackCases(status?: string, templateId?: string, take = 50): Observable<FeedbackCaseSummaryResponse[]> {
+    const params = [`take=${take}`];
+    if (status) params.push(`status=${encodeURIComponent(status)}`);
+    if (templateId) params.push(`templateId=${encodeURIComponent(templateId)}`);
+    return this.http.get<FeedbackCaseSummaryResponse[]>(`${this.baseUrl}/admin/feedback/cases?${params.join('&')}`);
+  }
+
+  getFeedbackCase(caseId: string): Observable<FeedbackCaseDetailResponse> {
+    return this.http.get<FeedbackCaseDetailResponse>(`${this.baseUrl}/admin/feedback/cases/${caseId}`);
+  }
+
+  revertFeedbackCase(caseId: string): Observable<RevertFeedbackCaseResponse> {
+    return this.http.post<RevertFeedbackCaseResponse>(`${this.baseUrl}/admin/feedback/cases/${caseId}/revert`, {});
+  }
+
+  getFeedbackReviewQueue(userId?: string, take = 50): Observable<FeedbackReviewQueueItemResponse[]> {
+    const params = [`take=${take}`];
+    if (userId) params.push(`userId=${encodeURIComponent(userId)}`);
+    return this.http.get<FeedbackReviewQueueItemResponse[]>(`${this.baseUrl}/admin/review-queue?${params.join('&')}`);
+  }
+
+  adminSearchEntities(query: string, userId?: string, take = 25): Observable<NodeSearchItemResponse[]> {
+    const params = [`q=${encodeURIComponent(query)}`, `take=${take}`];
+    if (userId) params.push(`userId=${encodeURIComponent(userId)}`);
+    return this.http.get<NodeSearchItemResponse[]>(`${this.baseUrl}/admin/entities/search?${params.join('&')}`);
+  }
+
+  getEntityDebug(entityId: string, userId?: string): Observable<EntityDebugResponse> {
+    const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    return this.http.get<EntityDebugResponse>(`${this.baseUrl}/admin/entities/${entityId}/debug${query}`);
+  }
+
+  getPolicyVersion(): Observable<PolicyVersionResponse> {
+    return this.http.get<PolicyVersionResponse>(`${this.baseUrl}/admin/policy/version`);
+  }
+
+  getPolicySummary(userId?: string): Observable<PolicySummaryResponse> {
+    const query = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    return this.http.get<PolicySummaryResponse>(`${this.baseUrl}/admin/policy/summary${query}`);
+  }
+
+  assistFeedbackTemplate(text: string, referencesJson?: string): Observable<FeedbackAssistResponse> {
+    return this.http.post<FeedbackAssistResponse>(`${this.baseUrl}/admin/feedback/assist`, { text, referencesJson });
   }
 }

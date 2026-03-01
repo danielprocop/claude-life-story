@@ -66,9 +66,6 @@
               <div class="concept-pill">
                 <span class="concept-type">{{ concept.type }}</span>
                 <strong>{{ concept.label }}</strong>
-                <button type="button" class="pill-feedback-button" (click)="setFeedbackFromConcept(concept)">
-                  Correggi
-                </button>
               </div>
             }
           </div>
@@ -81,68 +78,6 @@
           </p>
         </section>
       }
-
-      <section class="feedback-section">
-        <h3>Correggi estrazione AI</h3>
-        <p class="empty-state">
-          Segnala un termine classificato male (esempio: "Milan" squadra, non persona). La regola verra riusata nelle prossime elaborazioni.
-        </p>
-        <div class="feedback-grid">
-          <label>
-            Termine
-            <input
-              type="text"
-              class="feedback-input"
-              [ngModel]="feedbackTerm()"
-              (ngModelChange)="feedbackTerm.set($event)"
-              placeholder="Es: Milan" />
-          </label>
-          <label>
-            Tipo corretto
-            <select
-              class="feedback-input"
-              [ngModel]="feedbackKind()"
-              (ngModelChange)="feedbackKind.set($event)">
-              <option value="person">Persona</option>
-              <option value="place">Luogo</option>
-              <option value="team">Team/Squadra</option>
-              <option value="organization">Organizzazione</option>
-              <option value="project">Progetto</option>
-              <option value="activity">Attivita</option>
-              <option value="emotion">Emozione</option>
-              <option value="idea">Idea</option>
-              <option value="problem">Problema</option>
-              <option value="finance">Finanza</option>
-              <option value="object">Oggetto</option>
-              <option value="vehicle">Veicolo</option>
-              <option value="brand">Marca</option>
-              <option value="product_model">Modello prodotto</option>
-              <option value="year">Anno</option>
-              <option value="date">Data</option>
-              <option value="time">Orario</option>
-              <option value="amount">Importo</option>
-              <option value="not_entity">Non e una entita</option>
-              <option value="not_person">Non e una persona</option>
-            </select>
-          </label>
-        </div>
-        <label class="feedback-note-label">
-          Nota (opzionale)
-          <textarea
-            rows="3"
-            class="feedback-input"
-            [ngModel]="feedbackNote()"
-            (ngModelChange)="feedbackNote.set($event)"
-            placeholder="Dettagli utili per il contesto"></textarea>
-        </label>
-        <button
-          type="button"
-          class="primary-button"
-          (click)="sendEntityFeedback()"
-          [disabled]="feedbackSubmitting() || !feedbackTerm().trim()">
-          {{ feedbackSubmitting() ? 'Invio...' : 'Invia feedback' }}
-        </button>
-      </section>
 
       @if (relatedEntries().length > 0) {
         <section class="related-section">

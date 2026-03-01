@@ -28,6 +28,7 @@ export const routes: Routes = [
       { path: 'review', loadComponent: () => import('./pages/review').then(m => m.Review) },
       { path: 'insights', loadComponent: () => import('./pages/insights').then(m => m.Insights) },
       { path: 'themes', loadComponent: () => import('./pages/themes').then(m => m.Themes) },
+      { path: 'feedback-admin', loadComponent: () => import('./pages/feedback-admin').then(m => m.FeedbackAdminPage) },
     ],
   },
   { path: '**', redirectTo: 'dashboard' },

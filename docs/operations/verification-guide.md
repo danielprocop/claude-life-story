@@ -68,6 +68,12 @@ In caso di evento con split non esplicitato:
 
 ### 6) Feedback system admin
 
+UI check rapido:
+
+- apri `/nodes/{entityId}` e usa `Feedback nodo (admin)` con template `T4` o `T5`
+- esegui `Preview impatto`, poi `Apply feedback`
+- verifica aggiornamento in `Audit / Explainability` e in `/feedback-admin`
+
 1. preview:
 
 ```http

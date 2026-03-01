@@ -265,3 +265,36 @@ Questa conversazione ha consolidato la direzione del progetto.
 - nuova documentazione: `docs/feedback-system.md`
 - test aggiunti: `FeedbackSystemTests` con scenari G1..G5 (block token, merge redirect, change type, alias linking, auditability)
 - suite backend aggiornata: `dotnet test` verde con 25 test passati
+
+### Aggiornamento successivo
+
+- feedback spostato lato frontend da entry-level a node-level:
+  - rimossa UI `Correggi estrazione AI` da `entry-detail`
+  - aggiunto pannello `Feedback nodo (admin)` in `/nodes/:id` con template `T1/T3/T4/T5/T6`, preview e apply
+- aggiunta console operativa `/feedback-admin`:
+  - policy state (`version/summary`)
+  - assist template (precompile)
+  - review queue -> prefill payload
+  - preview/apply case
+  - case history + revert
+  - entity search + debug explainability
+- client API frontend esteso con tutti gli endpoint admin feedback/policy/debug
+- routing/nav aggiornati con voce `Feedback`
+- documentazione aggiornata:
+  - `docs/feedback-system.md` (workflow UI node-level + admin console)
+  - `docs/operations/verification-guide.md` (check UI feedback node)
+
+### Aggiornamento successivo
+
+- eseguito audit post-pull su branch `main`:
+  - working tree pulito
+  - nessun marker di conflitto (`<<<<<<<`, `=======`, `>>>>>>>`)
+  - nessun conflitto git aperto tra lavoro feedback precedente e attuale
+- analizzato failure GitHub Actions backend su run `22544822066` (e run precedente `22544008031`):
+  - job `Deploy Backend` fallito al passo `Deploy to App Runner`
+  - frontend nello stesso run completato con successo
+  - pattern compatibile con deploy ravvicinati su App Runner (servizio occupato durante `start-deployment`)
+- applicato hardening a `.github/workflows/deploy.yml`:
+  - aggiunta `concurrency` (`deploy-main`, `cancel-in-progress: true`)
+  - step backend `Deploy to App Runner` con wait su operazioni `IN_PROGRESS`
+  - retry con backoff su errori transient/busy (`InvalidStateException`/`ConflictException`)
