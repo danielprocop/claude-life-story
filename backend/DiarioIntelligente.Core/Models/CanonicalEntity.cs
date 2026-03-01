@@ -4,7 +4,7 @@ public class CanonicalEntity
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
-    public string Kind { get; set; } = string.Empty; // person | event | goal | place | generic
+    public string Kind { get; set; } = string.Empty; // person | event | goal | place | team | organization | project | activity | emotion | idea | problem | finance | object | vehicle | brand | product_model | generic
     public string CanonicalName { get; set; } = string.Empty;
     public string NormalizedCanonicalName { get; set; } = string.Empty;
     public string? AnchorKey { get; set; } // e.g. mother_of_user, brother_of_user

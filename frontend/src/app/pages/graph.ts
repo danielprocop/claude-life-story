@@ -76,6 +76,8 @@ export class Graph implements OnInit {
     const palette: Record<string, string> = {
       person: '#E8F2FF',
       place: '#E9FFF1',
+      team: '#EAF1FF',
+      organization: '#EEF2F4',
       goal: '#FFF4E8',
       project: '#F3EEFF',
       activity: '#FFFBE8',
@@ -83,6 +85,10 @@ export class Graph implements OnInit {
       emotion: '#FFEAF0',
       problem: '#FFEFEF',
       finance: '#EEFFF8',
+      object: '#F3F5F7',
+      vehicle: '#EDF0F4',
+      brand: '#F7EEFF',
+      product_model: '#F0EEFF',
       event: '#F2F4F8'
     };
 

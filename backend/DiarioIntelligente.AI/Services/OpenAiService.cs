@@ -74,7 +74,7 @@ Estrai le informazioni e restituisci SOLO un JSON valido, senza testo aggiuntivo
 Il JSON deve avere esattamente questa struttura:
 {
   ""emotions"": [""string""],
-  ""concepts"": [{ ""label"": ""string"", ""type"": ""person|place|team|organization|desire|goal|activity|emotion|project|decision|problem|habit"" }],
+  ""concepts"": [{ ""label"": ""string"", ""type"": ""person|place|team|organization|project|activity|emotion|idea|problem|finance|object|vehicle|brand|product_model|year|date|time|amount|desire|goal|progress|not_entity"" }],
   ""goalSignals"": [{ ""text"": ""string"", ""type"": ""desire|goal|progress"" }],
   ""goalCompletions"": [{ ""text"": ""string"", ""matchesDesire"": ""string"" }],
   ""energyLevel"": 5,
@@ -89,6 +89,12 @@ Il JSON deve avere esattamente questa struttura:
 - type=person solo per esseri umani reali (nome persona, familiare, collega, amico).
 - NON classificare mai come person articoli, preposizioni o avverbi (es: il, la, un, con, alle, oggi).
 - Se il termine e una squadra o club sportivo (es: Milan, Inter, Juventus) usa type=team.
+- Se il termine e un'auto o veicolo usa type=vehicle.
+- Se il termine e una marca auto usa type=brand.
+- Se il termine e un modello auto (es: Citroen DS 5, Audi A3, BMW X1) usa type=product_model.
+- Se il termine e un anno (es: 2012) usa type=year.
+- Se il termine e un orario (es: 12:30) usa type=time.
+- Se il termine e un importo con valuta usa type=amount.
 - Se compare lo stesso label con type non-person, evita duplicato come person.
 Se un campo non ha valori, usa un array vuoto []."),
                             new ChatRequestUserMessage($"Analizza questa entry del diario:\n\n{content}")

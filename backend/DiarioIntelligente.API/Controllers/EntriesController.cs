@@ -200,6 +200,15 @@ public class EntriesController : AuthenticatedController
                     "idea",
                     "problem",
                     "finance",
+                    "object",
+                    "vehicle",
+                    "brand",
+                    "product_model",
+                    "year",
+                    "date",
+                    "time",
+                    "amount",
+                    "not_entity",
                     "not_person"
                 }
             });
@@ -302,7 +311,16 @@ public class EntriesController : AuthenticatedController
             "idea" or "belief" or "philosophy" => "idea",
             "problema" or "problem" or "blocker" => "problem",
             "finanza" or "finance" or "money" => "finance",
-            "notperson" or "nonperson" or "notentity" or "ignore" or "none" => "not_person",
+            "oggetto" or "object" or "item" or "thing" => "object",
+            "veicolo" or "vehicle" or "car" or "auto" or "macchina" or "automobile" => "vehicle",
+            "marca" or "brand" => "brand",
+            "productmodel" or "modello" or "model" => "product_model",
+            "anno" or "year" => "year",
+            "data" or "date" => "date",
+            "ora" or "orario" or "time" => "time",
+            "importo" or "amount" or "prezzo" => "amount",
+            "notentity" or "nonentity" or "ignore" or "none" => "not_entity",
+            "notperson" or "nonperson" => "not_person",
             _ => null
         };
     }

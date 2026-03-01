@@ -25,6 +25,14 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     };
 
     private static readonly string[] EventKeywords = { "cena", "pranzo", "spesa", "aperitivo", "uscita" };
+    private static readonly HashSet<string> NonGraphEntityKinds = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "not_entity",
+        "year",
+        "date",
+        "time",
+        "amount"
+    };
     private static readonly string[] SportsContextHints =
     {
         "giocher",
@@ -828,6 +836,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             var kind = MapConceptTypeToEntityKind(concept.Type);
             if (string.Equals(kind, "person", StringComparison.OrdinalIgnoreCase))
                 continue;
+            if (NonGraphEntityKinds.Contains(kind))
+                continue;
 
             var key = $"{kind}:{concept.Label.Trim()}";
             if (!seen.Add(key))
@@ -864,6 +874,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
             var kind = MapConceptTypeToEntityKind(goalSignal.Type);
             if (string.Equals(kind, "person", StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (NonGraphEntityKinds.Contains(kind))
                 continue;
 
             var key = $"{kind}:{goalSignal.Text.Trim()}";
@@ -1742,6 +1754,15 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             "idea" or "belief" or "question" or "philosophy" => "idea",
             "problem" or "blocker" => "problem",
             "money" or "finance" => "finance",
+            "object" or "item" => "object",
+            "vehicle" or "car" or "auto" => "vehicle",
+            "brand" => "brand",
+            "productmodel" or "model" => "product_model",
+            "year" => "year",
+            "date" => "date",
+            "time" => "time",
+            "amount" => "amount",
+            "notentity" => "not_entity",
             _ => ToKindToken(rawType)
         };
     }
@@ -1882,7 +1903,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             "devo" or
             "mi" or
             "ha" or
-            "hanno";
+            "hanno" or
+            "auto" or
+            "macchina" or
+            "automobile" or
+            "veicolo";
     }
 
     private static decimal? ParseDecimal(string raw)

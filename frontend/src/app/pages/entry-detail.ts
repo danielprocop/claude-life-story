@@ -167,6 +167,15 @@ export class EntryDetailPage implements OnInit {
     if (normalized === 'feeling') return 'emotion';
     if (normalized === 'belief' || normalized === 'philosophy') return 'idea';
     if (normalized === 'blocker') return 'problem';
+    if (normalized === 'car' || normalized === 'automobile') return 'vehicle';
+    if (normalized === 'marca') return 'brand';
+    if (normalized === 'model' || normalized === 'modello' || normalized === 'productmodel') return 'product_model';
+    if (normalized === 'anno') return 'year';
+    if (normalized === 'data') return 'date';
+    if (normalized === 'ora' || normalized === 'orario') return 'time';
+    if (normalized === 'prezzo' || normalized === 'importo' || normalized === 'costo') return 'amount';
+    if (normalized === 'notentity' || normalized === 'nonentity') return 'not_entity';
+    if (normalized === 'notperson' || normalized === 'nonperson') return 'not_person';
     if (
       normalized === 'person' ||
       normalized === 'place' ||
@@ -178,6 +187,15 @@ export class EntryDetailPage implements OnInit {
       normalized === 'idea' ||
       normalized === 'problem' ||
       normalized === 'finance' ||
+      normalized === 'object' ||
+      normalized === 'vehicle' ||
+      normalized === 'brand' ||
+      normalized === 'product_model' ||
+      normalized === 'year' ||
+      normalized === 'date' ||
+      normalized === 'time' ||
+      normalized === 'amount' ||
+      normalized === 'not_entity' ||
       normalized === 'not_person'
     ) {
       return normalized;

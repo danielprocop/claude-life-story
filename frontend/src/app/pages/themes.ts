@@ -20,10 +20,23 @@ export class Themes implements OnInit {
   private typeLabels: Record<string, string> = {
     person: 'Persone',
     place: 'Luoghi',
+    team: 'Team',
+    organization: 'Organizzazioni',
     desire: 'Desideri',
     goal: 'Obiettivi',
     activity: 'Attivita',
     emotion: 'Emozioni',
+    idea: 'Idee',
+    problem: 'Problemi',
+    finance: 'Finanza',
+    object: 'Oggetti',
+    vehicle: 'Veicoli',
+    brand: 'Marche',
+    product_model: 'Modelli',
+    year: 'Anni',
+    date: 'Date',
+    time: 'Orari',
+    amount: 'Importi',
   };
 
   constructor(private api: Api) {}

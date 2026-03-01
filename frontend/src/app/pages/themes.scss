@@ -17,10 +17,23 @@
 
   &[data-type="person"] { border-top: 3px solid #e74c3c; }
   &[data-type="place"] { border-top: 3px solid #3498db; }
+  &[data-type="team"] { border-top: 3px solid #1f6feb; }
+  &[data-type="organization"] { border-top: 3px solid #7f8c8d; }
   &[data-type="desire"] { border-top: 3px solid #f39c12; }
   &[data-type="goal"] { border-top: 3px solid #2ecc71; }
   &[data-type="activity"] { border-top: 3px solid #9b59b6; }
   &[data-type="emotion"] { border-top: 3px solid #e91e63; }
+  &[data-type="idea"] { border-top: 3px solid #00a8e8; }
+  &[data-type="problem"] { border-top: 3px solid #e74c3c; }
+  &[data-type="finance"] { border-top: 3px solid #16a085; }
+  &[data-type="object"] { border-top: 3px solid #95a5a6; }
+  &[data-type="vehicle"] { border-top: 3px solid #2d3436; }
+  &[data-type="brand"] { border-top: 3px solid #8e44ad; }
+  &[data-type="product_model"] { border-top: 3px solid #6c5ce7; }
+  &[data-type="year"] { border-top: 3px solid #f1c40f; }
+  &[data-type="date"] { border-top: 3px solid #00b894; }
+  &[data-type="time"] { border-top: 3px solid #0984e3; }
+  &[data-type="amount"] { border-top: 3px solid #27ae60; }
 }
 
 .theme-title { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
