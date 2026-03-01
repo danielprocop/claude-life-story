@@ -40,6 +40,38 @@ public record EntryEntityFeedbackResponse(
     string Message
 );
 
+public record TimelineEntryCardResponse(
+    Guid Id,
+    string ContentPreview,
+    DateTime CreatedAt,
+    int ConceptCount
+);
+
+public record TimelineBucketResponse(
+    string BucketKey,
+    string Label,
+    DateTime StartUtc,
+    DateTime EndUtc,
+    int EntryCount,
+    bool HasMoreEntries,
+    List<TimelineEntryCardResponse> Entries
+);
+
+public record EntriesTimelineResponse(
+    string View,
+    int BucketCount,
+    int EntriesPerBucket,
+    int TimezoneOffsetMinutes,
+    DateTime RangeStartUtc,
+    DateTime RangeEndUtc,
+    DateTime CurrentBucketStartUtc,
+    bool HasPrevious,
+    bool HasNext,
+    DateTime? PreviousCursorUtc,
+    DateTime? NextCursorUtc,
+    List<TimelineBucketResponse> Buckets
+);
+
 public record PaginatedResponse<T>(
     List<T> Items,
     int TotalCount,

@@ -1,33 +1,77 @@
 <div class="timeline-page">
-  <h2 class="page-title">Timeline</h2>
-  <p class="page-subtitle">Le tue entry in ordine cronologico</p>
+  <header class="timeline-header">
+    <div>
+      <h2 class="page-title">Timeline</h2>
+      <p class="page-subtitle">Esplora la tua storia per giorno, settimana, mese o anno.</p>
+    </div>
+    <div class="view-switch">
+      @for (mode of availableViews; track mode) {
+        <button
+          type="button"
+          [class.active]="view() === mode"
+          (click)="setView(mode)"
+          [disabled]="loading()">
+          @if (mode === 'day') { Giorno }
+          @else if (mode === 'week') { Settimana }
+          @else if (mode === 'month') { Mese }
+          @else { Anno }
+        </button>
+      }
+    </div>
+  </header>
 
   @if (notice()) {
     <div class="notice-banner">{{ notice() }}</div>
   }
 
   @if (loading()) {
-    <div class="loading">Caricamento...</div>
-  } @else if (entries().length === 0) {
-    <div class="empty">Nessuna entry ancora. Vai a scrivere qualcosa!</div>
+    <div class="state-card">Caricamento timeline...</div>
+  } @else if (error()) {
+    <div class="state-card error">{{ error() }}</div>
+  } @else if (!timeline() || timeline()!.buckets.length === 0) {
+    <div class="state-card empty">Nessuna entry ancora. Vai a scrivere qualcosa!</div>
   } @else {
-    <div class="timeline">
-      @for (entry of entries(); track entry.id) {
-        <div class="timeline-entry">
-          <div class="entry-date">{{ entry.createdAt | date:'dd MMM yyyy, HH:mm' }}</div>
-          <div class="entry-content">{{ entry.contentPreview }}</div>
-          @if (entry.conceptCount > 0) {
-            <div class="entry-meta">{{ entry.conceptCount }} concetti estratti</div>
-          }
-          <a class="entry-link" [routerLink]="['/entries', entry.id]">Apri entry</a>
-        </div>
-      }
+    <div class="timeline-controls">
+      <button type="button" (click)="loadPrevious()" [disabled]="!timeline()!.hasPrevious || loading()">← Indietro</button>
+      <div class="timeline-meta">
+        <span class="window-label">{{ windowLabel() }}</span>
+        <span class="window-count">{{ totalEntriesInWindow() }} entry nel range</span>
+      </div>
+      <button type="button" (click)="loadNext()" [disabled]="!timeline()!.hasNext || loading()">Avanti →</button>
     </div>
 
-    <div class="pagination">
-      <button (click)="prevPage()" [disabled]="page() <= 1">Precedente</button>
-      <span>Pagina {{ page() }}</span>
-      <button (click)="nextPage()" [disabled]="entries().length < 20">Successiva</button>
+    <div class="timeline-scroll-wrap">
+      <div class="timeline-scroll">
+        @for (bucket of timeline()!.buckets; track bucket.bucketKey) {
+          <section class="timeline-bucket">
+            <header class="bucket-header">
+              <h3>{{ bucket.label }}</h3>
+              <span>{{ bucket.entryCount }}</span>
+            </header>
+
+            @if (bucket.entries.length === 0) {
+              <p class="bucket-empty">Nessuna entry in questo periodo.</p>
+            } @else {
+              <div class="bucket-cards">
+                @for (entry of bucket.entries; track entry.id) {
+                  <article class="entry-card">
+                    <p class="entry-date">{{ entry.createdAt | date:'dd MMM yyyy, HH:mm' }}</p>
+                    <p class="entry-content">{{ entry.contentPreview }}</p>
+                    <div class="entry-footer">
+                      <span class="entry-meta">{{ formatEntryMeta(entry) }}</span>
+                      <a [routerLink]="['/entries', entry.id]">Apri</a>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+
+            @if (bucket.hasMoreEntries) {
+              <p class="bucket-more">Mostrate {{ bucket.entries.length }} di {{ bucket.entryCount }} entry.</p>
+            }
+          </section>
+        }
+      </div>
     </div>
   }
 </div>

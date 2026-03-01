@@ -33,6 +33,40 @@ export interface EntryListResponse {
   conceptCount: number;
 }
 
+export type TimelineViewMode = 'day' | 'week' | 'month' | 'year';
+
+export interface TimelineEntryCardResponse {
+  id: string;
+  contentPreview: string;
+  createdAt: string;
+  conceptCount: number;
+}
+
+export interface TimelineBucketResponse {
+  bucketKey: string;
+  label: string;
+  startUtc: string;
+  endUtc: string;
+  entryCount: number;
+  hasMoreEntries: boolean;
+  entries: TimelineEntryCardResponse[];
+}
+
+export interface EntriesTimelineResponse {
+  view: TimelineViewMode;
+  bucketCount: number;
+  entriesPerBucket: number;
+  timezoneOffsetMinutes: number;
+  rangeStartUtc: string;
+  rangeEndUtc: string;
+  currentBucketStartUtc: string;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  previousCursorUtc: string | null;
+  nextCursorUtc: string | null;
+  buckets: TimelineBucketResponse[];
+}
+
 export interface PaginatedResponse<T> {
   items: T[];
   totalCount: number;
@@ -403,6 +437,27 @@ export class Api {
     return this.http.get<PaginatedResponse<EntryListResponse>>(
       `${this.baseUrl}/entries?page=${page}&pageSize=${pageSize}`
     );
+  }
+
+  getEntriesTimeline(
+    view: TimelineViewMode,
+    cursorUtc?: string,
+    bucketCount = 10,
+    entriesPerBucket = 8,
+    timezoneOffsetMinutes = new Date().getTimezoneOffset()
+  ): Observable<EntriesTimelineResponse> {
+    const params = [
+      `view=${encodeURIComponent(view)}`,
+      `bucketCount=${bucketCount}`,
+      `entriesPerBucket=${entriesPerBucket}`,
+      `timezoneOffsetMinutes=${timezoneOffsetMinutes}`,
+    ];
+
+    if (cursorUtc) {
+      params.push(`cursorUtc=${encodeURIComponent(cursorUtc)}`);
+    }
+
+    return this.http.get<EntriesTimelineResponse>(`${this.baseUrl}/entries/timeline?${params.join('&')}`);
   }
 
   getEntry(id: string): Observable<EntryResponse> {

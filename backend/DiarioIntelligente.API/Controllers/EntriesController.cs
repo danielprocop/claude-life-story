@@ -108,6 +108,141 @@ public class EntriesController : AuthenticatedController
         return Ok(response);
     }
 
+    [HttpGet("timeline")]
+    public async Task<ActionResult<EntriesTimelineResponse>> GetTimeline(
+        [FromQuery] string view = "day",
+        [FromQuery] DateTime? cursorUtc = null,
+        [FromQuery] int bucketCount = 10,
+        [FromQuery] int entriesPerBucket = 8,
+        [FromQuery] int timezoneOffsetMinutes = 0)
+    {
+        var safeView = NormalizeTimelineView(view);
+        var safeBucketCount = Math.Clamp(bucketCount, 3, 24);
+        var safeEntriesPerBucket = Math.Clamp(entriesPerBucket, 1, 24);
+        var safeTimezoneOffset = Math.Clamp(timezoneOffsetMinutes, -840, 840);
+
+        var nowUtc = DateTime.UtcNow;
+        var nowLocal = ToLocalTime(nowUtc, safeTimezoneOffset);
+        var nowBucketStartLocal = GetBucketStartLocal(nowLocal, safeView);
+
+        var anchorUtc = NormalizeUtc(cursorUtc) ?? nowUtc;
+        var anchorLocal = ToLocalTime(anchorUtc, safeTimezoneOffset);
+        var newestBucketStartLocal = GetBucketStartLocal(anchorLocal, safeView);
+
+        if (newestBucketStartLocal > nowBucketStartLocal)
+            newestBucketStartLocal = nowBucketStartLocal;
+
+        var oldestBucketStartLocal = AddBuckets(newestBucketStartLocal, safeView, -safeBucketCount + 1);
+        var windowEndExclusiveLocal = AddBuckets(newestBucketStartLocal, safeView, 1);
+
+        var rangeStartUtc = ToUtc(oldestBucketStartLocal, safeTimezoneOffset);
+        var rangeEndUtc = ToUtc(windowEndExclusiveLocal, safeTimezoneOffset);
+
+        var entries = await _entryRepo.GetByDateRangeAsync(
+            GetUserId(),
+            rangeStartUtc,
+            rangeEndUtc.AddTicks(-1));
+
+        var entryIds = entries.Select(entry => entry.Id).ToList();
+        var conceptCounts = entryIds.Count == 0
+            ? new Dictionary<Guid, int>()
+            : await _db.EntryConceptMaps
+                .Where(map => entryIds.Contains(map.EntryId))
+                .GroupBy(map => map.EntryId)
+                .Select(group => new { EntryId = group.Key, Count = group.Count() })
+                .ToDictionaryAsync(item => item.EntryId, item => item.Count, HttpContext.RequestAborted);
+
+        var bucketStartsLocal = Enumerable.Range(0, safeBucketCount)
+            .Select(index => AddBuckets(oldestBucketStartLocal, safeView, index))
+            .ToList();
+
+        var entriesByBucketKey = bucketStartsLocal.ToDictionary(
+            start => BuildBucketKey(start, safeView),
+            _ => new List<Entry>(),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in entries)
+        {
+            var local = ToLocalTime(entry.CreatedAt, safeTimezoneOffset);
+            var bucketStartLocal = GetBucketStartLocal(local, safeView);
+            var key = BuildBucketKey(bucketStartLocal, safeView);
+            if (entriesByBucketKey.TryGetValue(key, out var list))
+                list.Add(entry);
+        }
+
+        var culture = CultureInfo.GetCultureInfo("it-IT");
+        var buckets = new List<TimelineBucketResponse>(safeBucketCount);
+        foreach (var startLocal in bucketStartsLocal)
+        {
+            var key = BuildBucketKey(startLocal, safeView);
+            var bucketEntries = entriesByBucketKey[key]
+                .OrderByDescending(entry => entry.CreatedAt)
+                .ToList();
+
+            var cards = bucketEntries
+                .Take(safeEntriesPerBucket)
+                .Select(entry => new TimelineEntryCardResponse(
+                    entry.Id,
+                    entry.Content.Length > 180 ? entry.Content[..180] + "..." : entry.Content,
+                    entry.CreatedAt,
+                    conceptCounts.GetValueOrDefault(entry.Id)))
+                .ToList();
+
+            var endLocal = AddBuckets(startLocal, safeView, 1);
+            buckets.Add(new TimelineBucketResponse(
+                key,
+                FormatBucketLabel(startLocal, safeView, culture),
+                ToUtc(startLocal, safeTimezoneOffset),
+                ToUtc(endLocal, safeTimezoneOffset),
+                bucketEntries.Count,
+                bucketEntries.Count > safeEntriesPerBucket,
+                cards));
+        }
+
+        var earliestEntryUtc = await _db.Entries
+            .Where(entry => entry.UserId == GetUserId())
+            .OrderBy(entry => entry.CreatedAt)
+            .Select(entry => (DateTime?)entry.CreatedAt)
+            .FirstOrDefaultAsync(HttpContext.RequestAborted);
+
+        var hasPrevious = false;
+        if (earliestEntryUtc.HasValue)
+        {
+            var earliestLocalBucket = GetBucketStartLocal(
+                ToLocalTime(earliestEntryUtc.Value, safeTimezoneOffset),
+                safeView);
+            hasPrevious = earliestLocalBucket < oldestBucketStartLocal;
+        }
+
+        var hasNext = newestBucketStartLocal < nowBucketStartLocal;
+        DateTime? previousCursorUtc = hasPrevious
+            ? ToUtc(AddBuckets(oldestBucketStartLocal, safeView, -1), safeTimezoneOffset)
+            : null;
+
+        DateTime? nextCursorUtc = null;
+        if (hasNext)
+        {
+            var candidateNextLocal = AddBuckets(newestBucketStartLocal, safeView, safeBucketCount);
+            if (candidateNextLocal > nowBucketStartLocal)
+                candidateNextLocal = nowBucketStartLocal;
+            nextCursorUtc = ToUtc(candidateNextLocal, safeTimezoneOffset);
+        }
+
+        return Ok(new EntriesTimelineResponse(
+            safeView,
+            safeBucketCount,
+            safeEntriesPerBucket,
+            safeTimezoneOffset,
+            rangeStartUtc,
+            rangeEndUtc.AddTicks(-1),
+            ToUtc(nowBucketStartLocal, safeTimezoneOffset),
+            hasPrevious,
+            hasNext,
+            previousCursorUtc,
+            nextCursorUtc,
+            buckets));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<EntryResponse>> GetById(Guid id)
     {
@@ -343,5 +478,111 @@ public class EntriesController : AuthenticatedController
         }
 
         return builder.ToString();
+    }
+
+    private static string NormalizeTimelineView(string rawView)
+    {
+        var normalized = NormalizeToken(rawView);
+        return normalized switch
+        {
+            "day" or "daily" or "giorno" or "giornaliero" => "day",
+            "week" or "weekly" or "settimana" or "settimanale" => "week",
+            "month" or "monthly" or "mese" or "mensile" => "month",
+            "year" or "yearly" or "anno" or "annuale" => "year",
+            _ => "day"
+        };
+    }
+
+    private static DateTime? NormalizeUtc(DateTime? value)
+    {
+        if (!value.HasValue)
+            return null;
+
+        return value.Value.Kind switch
+        {
+            DateTimeKind.Utc => value.Value,
+            DateTimeKind.Local => value.Value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc)
+        };
+    }
+
+    private static DateTime ToLocalTime(DateTime utc, int timezoneOffsetMinutes)
+    {
+        var normalizedUtc = utc.Kind == DateTimeKind.Utc
+            ? utc
+            : DateTime.SpecifyKind(utc, DateTimeKind.Utc);
+
+        return DateTime.SpecifyKind(
+            normalizedUtc.AddMinutes(-timezoneOffsetMinutes),
+            DateTimeKind.Unspecified);
+    }
+
+    private static DateTime ToUtc(DateTime localTime, int timezoneOffsetMinutes)
+    {
+        var unspecified = localTime.Kind == DateTimeKind.Unspecified
+            ? localTime
+            : DateTime.SpecifyKind(localTime, DateTimeKind.Unspecified);
+
+        return DateTime.SpecifyKind(
+            unspecified.AddMinutes(timezoneOffsetMinutes),
+            DateTimeKind.Utc);
+    }
+
+    private static DateTime GetBucketStartLocal(DateTime localTime, string view)
+    {
+        var dayStart = localTime.Date;
+        return view switch
+        {
+            "day" => dayStart,
+            "week" => dayStart.AddDays(-(((int)dayStart.DayOfWeek + 6) % 7)),
+            "month" => new DateTime(dayStart.Year, dayStart.Month, 1),
+            "year" => new DateTime(dayStart.Year, 1, 1),
+            _ => dayStart
+        };
+    }
+
+    private static DateTime AddBuckets(DateTime localBucketStart, string view, int delta)
+    {
+        return view switch
+        {
+            "day" => localBucketStart.AddDays(delta),
+            "week" => localBucketStart.AddDays(delta * 7),
+            "month" => localBucketStart.AddMonths(delta),
+            "year" => localBucketStart.AddYears(delta),
+            _ => localBucketStart.AddDays(delta)
+        };
+    }
+
+    private static string BuildBucketKey(DateTime localBucketStart, string view)
+    {
+        return view switch
+        {
+            "day" => localBucketStart.ToString("yyyy-MM-dd"),
+            "week" => $"{localBucketStart:yyyy}-W{ISOWeek.GetWeekOfYear(localBucketStart):D2}",
+            "month" => localBucketStart.ToString("yyyy-MM"),
+            "year" => localBucketStart.ToString("yyyy"),
+            _ => localBucketStart.ToString("yyyy-MM-dd")
+        };
+    }
+
+    private static string FormatBucketLabel(DateTime localBucketStart, string view, CultureInfo culture)
+    {
+        return view switch
+        {
+            "day" => culture.TextInfo.ToTitleCase(localBucketStart.ToString("ddd d MMM yyyy", culture)),
+            "week" => BuildWeekLabel(localBucketStart, culture),
+            "month" => culture.TextInfo.ToTitleCase(localBucketStart.ToString("MMMM yyyy", culture)),
+            "year" => localBucketStart.ToString("yyyy", culture),
+            _ => localBucketStart.ToString("dd MMM yyyy", culture)
+        };
+    }
+
+    private static string BuildWeekLabel(DateTime startLocal, CultureInfo culture)
+    {
+        var endLocal = startLocal.AddDays(6);
+        var week = ISOWeek.GetWeekOfYear(startLocal);
+        var startText = startLocal.ToString("d MMM", culture);
+        var endText = endLocal.ToString("d MMM yyyy", culture);
+        return $"Settimana {week} · {startText} - {endText}";
     }
 }
