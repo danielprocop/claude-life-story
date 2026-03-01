@@ -26,9 +26,16 @@ This wipes entries + derived memory + user-scoped feedback artifacts for the aut
 For iterative tuning, run:
 
 ```powershell
+pwsh docs/operations/scripts/cognito-get-id-token.ps1 `
+  -UserPoolId "eu-west-1_GUYadoxnL" `
+  -UserPoolClientId "45ggvje3r50cvi1as7lf7d3qvp" `
+  -Region "eu-west-1"
+
+$token = Get-Content .runlogs/alignment/latest-id-token.txt -Raw
+
 pwsh docs/operations/scripts/alignment-loop.ps1 `
   -ApiBaseUrl "https://<your-api-host>/api" `
-  -AuthToken "<JWT_ACCESS_TOKEN>" `
+  -AuthToken $token `
   -Count 100 `
   -MaxLoops 6
 ```
@@ -39,6 +46,7 @@ What it does:
 - runs `Normalize Entities`
 - reads admin review queue and applies suggested templates
 - repeats until queue stabilizes or `MaxLoops` is reached
+- writes per-loop analysis (applied feedback, warnings, final queue count)
 - writes summary to `.runlogs/alignment/<timestamp>/summary.json`
 
 ## Command used

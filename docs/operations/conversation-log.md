@@ -420,3 +420,36 @@ Questa conversazione ha consolidato la direzione del progetto.
 - aggiunto script batch operativo per allineamento:
   - `docs/operations/scripts/alignment-loop.ps1`
   - esegue reset completo -> inserimento N entry (default 100) -> normalize -> apply feedback suggeriti da review queue in loop -> summary JSON in `.runlogs/alignment/<timestamp>/summary.json`
+
+### Aggiornamento successivo
+
+- aggiunto script per ottenere token Cognito valido in modo automatico:
+  - `docs/operations/scripts/cognito-get-id-token.ps1`
+  - crea/riusa utente tecnico, imposta password permanente, tenta add al gruppo `ADMIN`, genera `id_token` e lo salva in `.runlogs/alignment/latest-id-token.txt`
+- aggiornato runbook reset/alignment con flusso completo:
+  - genera token
+  - esegue `alignment-loop.ps1` (100 entry + analisi per loop + apply feedback da review queue)
+
+### Aggiornamento successivo
+
+- esecuzione reale end-to-end su ambiente AWS (senza mock):
+  - token Cognito generato via script `cognito-get-id-token.ps1`
+  - run completo `alignment-loop.ps1` su `https://3fbtvtsycn.eu-west-1.awsapprunner.com/api`
+  - reset completo utente + inserimento **100 entry** + loop analisi/apply feedback
+- fix script alignment:
+  - corretto bug PowerShell su `AddRange` (seed entries)
+  - gestito redirect HTTPS->HTTP dei POST con `-AllowInsecureRedirect`
+  - corretto conteggio queue finale (`[]` string/non-array) con helper `As-Collection`
+- output run principale:
+  - summary: `.runlogs/alignment/20260301-181538/summary.json`
+  - `reviewQueueOpen=0`, `ambiguousNodes=0`
+  - loop1: 2 issue -> 2 feedback apply
+  - loop2: 0 issue -> stop
+- audit dati post-loop su Aurora (user filter):
+  - output: `.runlogs/data-quality/20260301-181719/audit/report.md`
+  - segnali sospetti tutti a zero:
+    - pronoun PERSON = 0
+    - cross-kind collisions = 0
+    - duplicate within kind = 0
+    - event-like entities = 0
+    - missing amounts events = 0

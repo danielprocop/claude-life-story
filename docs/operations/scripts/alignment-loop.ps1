@@ -44,15 +44,52 @@ function Invoke-Api {
     $headers = Get-Headers
 
     if ($Method -eq "GET") {
-        return Invoke-RestMethod -Method GET -Uri $url -Headers $headers
+        return Invoke-RestMethod -Method GET -Uri $url -Headers $headers -AllowInsecureRedirect
     }
 
     if ($null -eq $Body) {
-        return Invoke-RestMethod -Method POST -Uri $url -Headers $headers -ContentType "application/json" -Body "{}"
+        return Invoke-RestMethod -Method POST -Uri $url -Headers $headers -ContentType "application/json" -Body "{}" -AllowInsecureRedirect
     }
 
     $json = $Body | ConvertTo-Json -Depth 20
-    return Invoke-RestMethod -Method POST -Uri $url -Headers $headers -ContentType "application/json" -Body $json
+    return Invoke-RestMethod -Method POST -Uri $url -Headers $headers -ContentType "application/json" -Body $json -AllowInsecureRedirect
+}
+
+function As-Collection {
+    param([object]$Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    if ($Value -is [string]) {
+        $trimmed = $Value.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed -eq "[]") {
+            return @()
+        }
+
+        try {
+            $parsed = $trimmed | ConvertFrom-Json
+            if ($null -eq $parsed) {
+                return @()
+            }
+
+            if ($parsed -is [System.Array]) {
+                return $parsed
+            }
+
+            return @($parsed)
+        }
+        catch {
+            return @($Value)
+        }
+    }
+
+    if ($Value -is [System.Array]) {
+        return $Value
+    }
+
+    return @($Value)
 }
 
 function New-SeedEntries {
@@ -104,7 +141,9 @@ function New-SeedEntries {
     )
 
     $all = New-Object System.Collections.Generic.List[string]
-    $all.AddRange($base)
+    foreach ($line in $base) {
+        [void]$all.Add([string]$line)
+    }
 
     $i = 0
     while ($all.Count -lt $TargetCount) {
@@ -129,8 +168,9 @@ function Wait-ReplayDrain {
 
     $deadline = (Get-Date).AddSeconds($MaxSeconds)
     while ((Get-Date) -lt $deadline) {
-        $jobs = Invoke-Api -Method GET -Path "admin/feedback/replay-jobs?take=100"
-        if (-not $jobs -or ($jobs | Where-Object { $_.status -in @("queued", "running") }).Count -eq 0) {
+        $jobsRaw = Invoke-Api -Method GET -Path "admin/feedback/replay-jobs?take=100"
+        $jobs = As-Collection $jobsRaw
+        if ($jobs.Count -eq 0 -or ($jobs | Where-Object { $_.status -in @("queued", "running") }).Count -eq 0) {
             return
         }
 
@@ -197,13 +237,13 @@ for ($loop = 1; $loop -le $MaxLoops; $loop++) {
 
     $queue = @()
     try {
-        $queue = Invoke-Api -Method GET -Path "admin/review-queue?take=200"
+        $queueRaw = Invoke-Api -Method GET -Path "admin/review-queue?take=200"
+        $queue = As-Collection $queueRaw
     }
     catch {
         $loopSummary.warnings += "Review queue unavailable: $($_.Exception.Message)"
     }
 
-    $queue = @($queue)
     $loopSummary.reviewQueueCount = $queue.Count
 
     if ($queue.Count -eq 0) {
@@ -262,7 +302,7 @@ catch {
 }
 
 try {
-    $finalQueue = @(Invoke-Api -Method GET -Path "admin/review-queue?take=200")
+    $finalQueue = As-Collection (Invoke-Api -Method GET -Path "admin/review-queue?take=200")
 }
 catch {
     $finalQueue = @()
@@ -278,7 +318,7 @@ $runSummary.final = [ordered]@{
     nodeCount = $nodes.totalCount
     ambiguousNodes = $ambiguous
     suppressedCandidates = $suppressedCandidates
-    reviewQueueOpen = @($finalQueue).Count
+    reviewQueueOpen = $finalQueue.Count
     policySummary = $policy
 }
 
