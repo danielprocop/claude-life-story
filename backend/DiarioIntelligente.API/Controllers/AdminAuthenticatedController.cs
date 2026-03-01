@@ -15,6 +15,14 @@ public abstract class AdminAuthenticatedController : AuthenticatedController
 
     protected ActionResult? EnsureAdminRole(out string role)
     {
+        // Temporary rollout mode: all authenticated users can use admin feedback tools.
+        // Set Admin__AllowAllUsers=false to restore strict role checks.
+        if (AllowAllUsersAsAdmin())
+        {
+            role = "ADMIN";
+            return null;
+        }
+
         role = ResolveRoleFromClaims();
         if (!string.IsNullOrWhiteSpace(role))
             return null;
@@ -41,6 +49,15 @@ public abstract class AdminAuthenticatedController : AuthenticatedController
         }
 
         return Forbid();
+    }
+
+    private static bool AllowAllUsersAsAdmin()
+    {
+        var raw = Environment.GetEnvironmentVariable("Admin__AllowAllUsers");
+        if (string.IsNullOrWhiteSpace(raw))
+            return true;
+
+        return bool.TryParse(raw, out var parsed) && parsed;
     }
 
     private string ResolveRoleFromClaims()

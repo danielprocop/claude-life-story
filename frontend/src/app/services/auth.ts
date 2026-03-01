@@ -51,6 +51,12 @@ export class AuthService {
       return false;
     }
 
+    // Temporary rollout mode: all authenticated users can use admin tools.
+    // Set environment.admin.allowAllUsers = false to restore strict role checks.
+    if (environment.admin?.allowAllUsers !== false) {
+      return true;
+    }
+
     if (current.email.toLowerCase() === 'demo@diariointelligente.app') {
       return true;
     }

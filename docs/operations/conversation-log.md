@@ -344,3 +344,12 @@ Questa conversazione ha consolidato la direzione del progetto.
   - su `VERSION_READY` attiva nuova versione e forza reload pagina
   - guard anti-loop reload (`localStorage` con finestra 60s)
 - wiring via `APP_INITIALIZER` in `app.config.ts` per avvio automatico senza interventi utente
+
+### Aggiornamento successivo
+
+- abilitata modalita temporanea "all users admin" per tools feedback:
+  - backend `AdminAuthenticatedController`: ogni utente autenticato viene autorizzato come `ADMIN`
+  - flag runtime: `Admin__AllowAllUsers` (default attivo se non impostato)
+  - frontend `AuthService.isAdmin`: accesso admin per tutti gli utenti autenticati
+  - flag frontend: `environment.admin.allowAllUsers=true`
+- effetto pratico: funzionalita feedback/admin disponibili subito anche per utenti esistenti e nuovi senza gestione Cognito groups
