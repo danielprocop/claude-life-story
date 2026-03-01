@@ -14,6 +14,8 @@ export class Dashboard implements OnInit {
   profile = signal<PersonalModelResponse | null>(null);
   openDebts = signal<OpenDebtResponse[]>([]);
   questions = signal<ClarificationQuestionResponse[]>([]);
+  questionDrafts = signal<Partial<Record<string, string>>>({});
+  answeringQuestions = signal<Partial<Record<string, boolean>>>({});
   loading = signal(true);
   profileLoading = signal(true);
   operationsBusy = signal(false);
@@ -42,9 +44,7 @@ export class Dashboard implements OnInit {
       next: (debts) => this.openDebts.set(debts),
     });
 
-    this.api.getProfileQuestions().subscribe({
-      next: (questions) => this.questions.set(questions),
-    });
+    this.reloadQuestions();
   }
 
   getEnergyColor(level: number): string {
@@ -62,7 +62,7 @@ export class Dashboard implements OnInit {
   runRebuildMemory(): void {
     if (this.operationsBusy()) return;
     this.operationsBusy.set(true);
-    this.operationsMessage.set('Rebuild in coda. La memoria verra rigenerata in background.');
+    this.operationsMessage.set('Rebuild in coda. Operazione heavy: usa solo dopo cambi algoritmo ingestion.');
 
     this.api.rebuildMemory().subscribe({
       next: () => {
@@ -79,7 +79,7 @@ export class Dashboard implements OnInit {
   runReindexEntities(): void {
     if (this.operationsBusy()) return;
     this.operationsBusy.set(true);
-    this.operationsMessage.set('Reindex in corso...');
+    this.operationsMessage.set('Reindex in corso (light)...');
 
     this.api.reindexEntities().subscribe({
       next: (result) => {
@@ -89,6 +89,25 @@ export class Dashboard implements OnInit {
       error: () => {
         this.operationsBusy.set(false);
         this.operationsMessage.set('Errore durante il reindex.');
+      },
+    });
+  }
+
+  runNormalizeEntities(): void {
+    if (this.operationsBusy()) return;
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Normalize Entities in corso (medium-light)...');
+
+    this.api.normalizeEntities().subscribe({
+      next: (result) => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set(
+          `Normalize completato: gruppi=${result.normalized}, merge=${result.merged}, soppressi=${result.suppressed}, ambigui=${result.ambiguous}, reindexed=${result.reindexed}.`
+        );
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Errore durante la normalizzazione entita.');
       },
     });
   }
@@ -116,6 +135,65 @@ export class Dashboard implements OnInit {
       error: () => {
         this.operationsBusy.set(false);
         this.operationsMessage.set('Impossibile avviare il rebuild.');
+      },
+    });
+  }
+
+  setQuestionDraft(questionId: string, value: string): void {
+    this.questionDrafts.set({
+      ...this.questionDrafts(),
+      [questionId]: value,
+    });
+  }
+
+  answerQuestion(questionId: string, suggested?: string): void {
+    if (this.answeringQuestions()[questionId]) return;
+
+    const answer = (suggested ?? this.questionDrafts()[questionId] ?? '').trim();
+    if (!answer) return;
+
+    this.answeringQuestions.set({
+      ...this.answeringQuestions(),
+      [questionId]: true,
+    });
+
+    this.api.answerProfileQuestion(questionId, answer).subscribe({
+      next: () => {
+        const drafts = { ...this.questionDrafts() };
+        delete drafts[questionId];
+        this.questionDrafts.set(drafts);
+        this.reloadQuestions();
+        this.refreshProfile();
+      },
+      error: () => {
+        this.answeringQuestions.set({
+          ...this.answeringQuestions(),
+          [questionId]: false,
+        });
+      },
+    });
+  }
+
+  private refreshProfile(): void {
+    this.profileLoading.set(true);
+    this.api.getProfile().subscribe({
+      next: (profile) => {
+        this.profile.set(profile);
+        this.profileLoading.set(false);
+      },
+      error: () => this.profileLoading.set(false),
+    });
+  }
+
+  private reloadQuestions(): void {
+    this.api.getProfileQuestions().subscribe({
+      next: (questions) => {
+        this.questions.set(questions);
+        const nextState: Partial<Record<string, boolean>> = {};
+        for (const question of questions) {
+          nextState[question.id] = false;
+        }
+        this.answeringQuestions.set(nextState);
       },
     });
   }

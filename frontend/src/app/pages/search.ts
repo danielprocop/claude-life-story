@@ -49,6 +49,7 @@ export class SearchPage {
             aliases: item.aliases,
             evidenceCount: item.evidenceCount,
             updatedAt: item.updatedAt,
+            resolutionState: item.resolutionState,
           })),
         });
         this.entityKindCounts.set(nodes.kindCounts.map((item) => ({ kind: item.kind, count: item.count })));

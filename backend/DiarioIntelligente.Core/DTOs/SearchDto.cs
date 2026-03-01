@@ -39,5 +39,6 @@ public record EntitySearchHit(
     string? AnchorKey,
     List<string> Aliases,
     int EvidenceCount,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string ResolutionState
 );

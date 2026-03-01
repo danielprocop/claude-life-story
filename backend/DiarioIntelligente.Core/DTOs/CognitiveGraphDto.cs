@@ -8,6 +8,7 @@ public record NodeViewResponse(
     List<string> Aliases,
     List<NodeRelationResponse> Relations,
     List<NodeEvidenceResponse> Evidence,
+    List<string> ResolutionNotes,
     PersonNodeViewResponse? Person,
     EventNodeViewResponse? Event
 );
@@ -26,7 +27,8 @@ public record NodeSearchItemResponse(
     string? AnchorKey,
     List<string> Aliases,
     int EvidenceCount,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    string ResolutionState
 );
 
 public record NodeKindCountResponse(

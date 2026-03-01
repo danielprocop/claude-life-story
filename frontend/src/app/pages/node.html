@@ -31,6 +31,17 @@
         </section>
       }
 
+      @if (n.resolutionNotes.length) {
+        <section class="section">
+          <h3>Risoluzione</h3>
+          <div class="chip-list">
+            @for (note of n.resolutionNotes; track note) {
+              <span class="chip relation">{{ note }}</span>
+            }
+          </div>
+        </section>
+      }
+
       @if (n.relations.length) {
         <section class="section">
           <h3>Relazioni</h3>

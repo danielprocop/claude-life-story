@@ -77,7 +77,8 @@ public class SearchController : AuthenticatedController
                 node.AnchorKey,
                 node.Aliases,
                 node.EvidenceCount,
-                node.UpdatedAt)).ToList()
+                node.UpdatedAt,
+                node.ResolutionState)).ToList()
         ));
     }
 }

@@ -71,6 +71,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             .Select(Normalize)
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var strongPersonNameHints = BuildStrongPersonHints(entry.Content, analysis);
 
         foreach (var mention in ExtractRoleMentions(entry.Content))
         {
@@ -123,6 +124,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 MarkChanged(anchoredEntity, changedEntities);
                 continue;
             }
+
+            var hasStrongSignal = strongPersonNameHints.Contains(normalizedPersonName);
+            var hasExistingPerson = HasExistingPersonMatch(entities, personName);
+            if (!hasStrongSignal && !hasExistingPerson)
+                continue;
 
             var entity = await ResolveOrCreatePersonEntityAsync(entry.UserId, personName, entities, entry, roleContext.Values.ToList(), cancellationToken);
             resolvedNameMentions[personName] = entity;
@@ -287,7 +293,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         if (!string.IsNullOrWhiteSpace(rawQuery))
             topFromOpenSearch = await _entityRetrievalService.SearchEntityCandidatesAsync(userId, rawQuery, safeLimit * 2, cancellationToken);
 
-        IQueryable<CanonicalEntity> filtered = _db.CanonicalEntities.Where(x => x.UserId == userId);
+        IQueryable<CanonicalEntity> filtered = _db.CanonicalEntities
+            .Where(x => x.UserId == userId && x.Kind != "person_suppressed");
         var placeNormalizedNames = _db.CanonicalEntities
             .Where(x => x.UserId == userId && x.Kind == "place")
             .Select(x => x.NormalizedCanonicalName);
@@ -311,6 +318,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         var kinds = await filtered
             .Select(x => x.Kind)
             .ToListAsync(cancellationToken);
+        var resolutionContext = await BuildResolutionContextAsync(userId, cancellationToken);
 
         var kindCounts = kinds
             .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
@@ -349,7 +357,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                     .Take(8)
                     .ToList(),
                 x.Entity.Evidence.Count,
-                x.Entity.UpdatedAt))
+                x.Entity.UpdatedAt,
+                ResolveNodeResolutionState(x.Entity, resolutionContext)))
             .ToList();
 
         return new NodeSearchResponse(rawQuery, ranked, totalCount, kindCounts);
@@ -369,6 +378,8 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         var relations = new List<NodeRelationResponse>();
         if (!string.IsNullOrWhiteSpace(entity.AnchorKey))
             relations.Add(new NodeRelationResponse("role_anchor", entity.AnchorKey));
+        var resolutionContext = await BuildResolutionContextAsync(userId, cancellationToken);
+        var resolutionNotes = BuildResolutionNotes(entity, resolutionContext);
 
         PersonNodeViewResponse? personView = null;
         EventNodeViewResponse? eventView = null;
@@ -436,6 +447,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             entity.Aliases.Select(x => x.Alias).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList(),
             relations,
             entity.Evidence.OrderByDescending(x => x.RecordedAt).Select(x => new NodeEvidenceResponse(x.EntryId, x.EvidenceType, x.Snippet, x.RecordedAt, x.MergeReason)).ToList(),
+            resolutionNotes,
             personView,
             eventView);
     }
@@ -1410,6 +1422,89 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         return string.Join(" | ", parts);
     }
 
+    private static HashSet<string> BuildStrongPersonHints(string content, AiAnalysisResult analysis)
+    {
+        var hints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var concept in analysis.Concepts.Where(x => string.Equals(x.Type, "person", StringComparison.OrdinalIgnoreCase)))
+        {
+            var normalized = Normalize(concept.Label ?? string.Empty);
+            if (!string.IsNullOrWhiteSpace(normalized))
+                hints.Add(normalized);
+        }
+
+        foreach (var binding in ExtractRoleNameBindings(content))
+            hints.Add(Normalize(binding.Name));
+
+        foreach (var binding in ExtractParentheticalBindings(content))
+            hints.Add(Normalize(binding.Name));
+
+        foreach (Match match in Regex.Matches(
+                     content,
+                     @"\bcon\s+(?<participants>.+?)(?=(?:\s+(?:e|ed)\s+(?:ho|ha|abbiamo|devo|mi|ci|poi)\b)|[,.!?]|$)",
+                     RegexOptions.IgnoreCase))
+        {
+            var rawParticipants = match.Groups["participants"].Value
+                .Split(new[] { ",", " e " }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var raw in rawParticipants)
+            {
+                var parenthetical = ParentheticalRoleRegex.Match(raw);
+                var name = parenthetical.Success ? parenthetical.Groups["name"].Value : raw;
+                var normalized = Normalize(name);
+                if (!string.IsNullOrWhiteSpace(normalized))
+                    hints.Add(normalized);
+            }
+        }
+
+        foreach (Match match in Regex.Matches(
+                     content,
+                     @"(?:devo(?:\s+(?:dare|darli|dargli|darle|ridare|restituire))?\s+\d+(?:[.,]\d+)?(?:\s*(?:euro|€))?\s+(?:a|ad)\s+|ho dato\s+\d+(?:[.,]\d+)?(?:\s*(?:euro|€))?\s+a(?:d)?\s+)(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)",
+                     RegexOptions.IgnoreCase))
+        {
+            var normalized = Normalize(match.Groups["name"].Value);
+            if (!string.IsNullOrWhiteSpace(normalized))
+                hints.Add(normalized);
+        }
+
+        foreach (Match match in Regex.Matches(
+                     content,
+                     @"(?<name>[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’\-]+)\s+mi ha dato\s+\d+(?:[.,]\d+)?",
+                     RegexOptions.IgnoreCase))
+        {
+            var normalized = Normalize(match.Groups["name"].Value);
+            if (!string.IsNullOrWhiteSpace(normalized))
+                hints.Add(normalized);
+        }
+
+        return hints;
+    }
+
+    private static bool HasExistingPersonMatch(List<CanonicalEntity> entities, string rawName)
+    {
+        var normalized = Normalize(rawName);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return false;
+
+        foreach (var person in entities.Where(x => x.Kind == "person"))
+        {
+            if (person.NormalizedCanonicalName == normalized ||
+                person.Aliases.Any(alias => alias.NormalizedAlias == normalized))
+            {
+                return true;
+            }
+
+            var fuzzy = Math.Max(
+                JaroWinklerSimilarity(normalized, person.NormalizedCanonicalName),
+                person.Aliases.Select(alias => JaroWinklerSimilarity(normalized, alias.NormalizedAlias)).DefaultIfEmpty(0).Max());
+
+            if (fuzzy >= 0.9)
+                return true;
+        }
+
+        return false;
+    }
+
     private static bool IsNameMatch(CanonicalEntity entity, string rawName)
     {
         var normalized = Normalize(rawName);
@@ -1420,6 +1515,93 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             return true;
 
         return entity.Aliases.Any(alias => alias.NormalizedAlias == normalized);
+    }
+
+    private async Task<ResolutionContext> BuildResolutionContextAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var personRecords = await _db.CanonicalEntities
+            .Where(x => x.UserId == userId && x.Kind == "person")
+            .Select(x => new PersonResolutionRecord(
+                x.Id,
+                x.NormalizedCanonicalName,
+                x.AnchorKey))
+            .ToListAsync(cancellationToken);
+
+        var placeNames = await _db.CanonicalEntities
+            .Where(x => x.UserId == userId && x.Kind == "place")
+            .Select(x => x.NormalizedCanonicalName)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var eventParticipantIds = await _db.EventParticipants
+            .Where(x => x.Event.UserId == userId)
+            .Select(x => x.EntityId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var settlementEntityIds = await _db.Settlements
+            .Where(x => x.UserId == userId)
+            .Select(x => x.CounterpartyEntityId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var roleEvidenceEntityIds = await _db.EntityEvidence
+            .Where(x =>
+                x.Entity.UserId == userId &&
+                (x.EvidenceType == "role_anchor" ||
+                 x.PropertyName == "anchor" ||
+                 x.MergeReason == "role_name_binding" ||
+                 x.MergeReason == "parenthetical_role"))
+            .Select(x => x.EntityId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var strongPersonNames = personRecords
+            .Where(x =>
+                !string.IsNullOrWhiteSpace(x.AnchorKey) ||
+                eventParticipantIds.Contains(x.EntityId) ||
+                settlementEntityIds.Contains(x.EntityId) ||
+                roleEvidenceEntityIds.Contains(x.EntityId))
+            .Select(x => x.NormalizedName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return new ResolutionContext(
+            placeNames
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase),
+            strongPersonNames);
+    }
+
+    private static string ResolveNodeResolutionState(CanonicalEntity entity, ResolutionContext context)
+    {
+        if (entity.Kind == "person" &&
+            string.IsNullOrWhiteSpace(entity.AnchorKey) &&
+            context.PlaceNames.Contains(entity.NormalizedCanonicalName))
+        {
+            if (context.StrongPersonNames.Contains(entity.NormalizedCanonicalName))
+                return "ambiguous";
+
+            return "suppressed_candidate";
+        }
+
+        if (entity.Kind == "place" && context.StrongPersonNames.Contains(entity.NormalizedCanonicalName))
+            return "ambiguous";
+
+        return "normal";
+    }
+
+    private static List<string> BuildResolutionNotes(CanonicalEntity entity, ResolutionContext context)
+    {
+        var notes = new List<string>();
+        var state = ResolveNodeResolutionState(entity, context);
+
+        if (state == "ambiguous")
+            notes.Add("Possibile conflitto cross-tipo: stesso nome presente come place/person con legami forti.");
+        else if (state == "suppressed_candidate")
+            notes.Add("Candidato persona debole su nome geografico: la UI privilegia il nodo place.");
+
+        return notes;
     }
 
     private static IEnumerable<string> ExtractStandalonePlaceMentions(string content)
@@ -1665,6 +1847,15 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
     {
         public string PrimaryAlias => Aliases[0];
     }
+
+    private sealed record PersonResolutionRecord(
+        Guid EntityId,
+        string NormalizedName,
+        string? AnchorKey);
+
+    private sealed record ResolutionContext(
+        HashSet<string> PlaceNames,
+        HashSet<string> StrongPersonNames);
 
     private sealed record RoleMention(RoleAnchorDefinition Role, string RawText);
     private sealed record RoleNameBinding(RoleAnchorDefinition Role, string Name, string Snippet);

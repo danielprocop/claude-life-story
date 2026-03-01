@@ -76,7 +76,45 @@
       <button class="sign-out" type="button" (click)="signOut()">Esci</button>
     </div>
   </nav>
-  <main class="content">
-    <router-outlet />
-  </main>
+
+  <div class="main-shell">
+    <header class="mobile-topbar">
+      <div class="brand">
+        <strong>Diario</strong>
+        <span *ngIf="auth.user() as user">{{ user.email }}</span>
+      </div>
+      <button type="button" class="mobile-sign-out" (click)="signOut()">Esci</button>
+    </header>
+
+    @if ((install.canInstall() || install.showIosHint()) && !install.dismissed() && !install.installed()) {
+      <section class="install-banner">
+        <div class="banner-copy">
+          <strong>Installa sul telefono</strong>
+          @if (install.canInstall()) {
+            <p>Usa la versione app installabile per accesso rapido da home screen.</p>
+          } @else {
+            <p>Su iPhone: Condividi -> Aggiungi a schermata Home.</p>
+          }
+        </div>
+        <div class="banner-actions">
+          @if (install.canInstall()) {
+            <button type="button" class="install-btn" (click)="installApp()">Installa</button>
+          }
+          <button type="button" class="dismiss-btn" (click)="dismissInstallPrompt()">Nascondi</button>
+        </div>
+      </section>
+    }
+
+    <main class="content">
+      <router-outlet />
+    </main>
+
+    <nav class="mobile-bottom-nav">
+      <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+      <a routerLink="/write" routerLinkActive="active">Scrivi</a>
+      <a routerLink="/chat" routerLinkActive="active">Chat</a>
+      <a routerLink="/search" routerLinkActive="active">Ricerca</a>
+      <a routerLink="/graph" routerLinkActive="active">Mappa</a>
+    </nav>
+  </div>
 </div>

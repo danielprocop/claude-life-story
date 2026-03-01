@@ -1,4 +1,5 @@
 using DiarioIntelligente.API.Services;
+using DiarioIntelligente.Core.DTOs;
 using DiarioIntelligente.Core.Interfaces;
 using DiarioIntelligente.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -13,15 +14,18 @@ public class OperationsController : AuthenticatedController
     private readonly AppDbContext _db;
     private readonly ISearchProjectionService _searchProjectionService;
     private readonly UserMemoryRebuildQueue _rebuildQueue;
+    private readonly IEntityNormalizationService _entityNormalizationService;
 
     public OperationsController(
         AppDbContext db,
         ISearchProjectionService searchProjectionService,
-        UserMemoryRebuildQueue rebuildQueue)
+        UserMemoryRebuildQueue rebuildQueue,
+        IEntityNormalizationService entityNormalizationService)
     {
         _db = db;
         _searchProjectionService = searchProjectionService;
         _rebuildQueue = rebuildQueue;
+        _entityNormalizationService = entityNormalizationService;
     }
 
     [HttpPost("reindex/entities")]
@@ -47,5 +51,12 @@ public class OperationsController : AuthenticatedController
         var userId = GetUserId();
         await _rebuildQueue.EnqueueAsync(userId, HttpContext.RequestAborted);
         return Accepted(new { queued = true, userId });
+    }
+
+    [HttpPost("normalize/entities")]
+    public async Task<ActionResult<NormalizeEntitiesResponse>> NormalizeEntities()
+    {
+        var response = await _entityNormalizationService.NormalizeUserEntitiesAsync(GetUserId(), HttpContext.RequestAborted);
+        return Ok(response);
     }
 }

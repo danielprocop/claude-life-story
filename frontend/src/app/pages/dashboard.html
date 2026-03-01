@@ -79,7 +79,13 @@
         <p class="empty">
           Usa questi comandi quando cambi algoritmo di mapping o vuoi riallineare mappa e retrieval.
         </p>
+        <div class="ops-guide">
+          <span><strong>Normalize Entities:</strong> fix duplicati place/person senza rebuild completo.</span>
+          <span><strong>Reindex Entities:</strong> solo riallineamento indice OpenSearch (light).</span>
+          <span><strong>Rebuild + Reindex:</strong> heavy, solo dopo cambi profondi ingestione.</span>
+        </div>
         <div class="ops-actions">
+          <button type="button" (click)="runNormalizeEntities()" [disabled]="operationsBusy()">Normalize Entities</button>
           <button type="button" (click)="runRebuildMemory()" [disabled]="operationsBusy()">Rebuild Memory</button>
           <button type="button" (click)="runReindexEntities()" [disabled]="operationsBusy()">Reindex Entities</button>
           <button type="button" (click)="runRebuildAndReindex()" [disabled]="operationsBusy()">Rebuild + Reindex</button>
@@ -110,6 +116,25 @@
             <div class="insight-item">
               <span class="insight-type" data-type="question">{{ question.questionType }}</span>
               <p>{{ question.prompt }}</p>
+              <div class="question-actions">
+                <button type="button" (click)="answerQuestion(question.id, 'si, split uguale')" [disabled]="answeringQuestions()[question.id]">
+                  Split uguale
+                </button>
+                <button type="button" (click)="answerQuestion(question.id, 'no')" [disabled]="answeringQuestions()[question.id]">
+                  No
+                </button>
+              </div>
+              <div class="question-input">
+                <input
+                  type="text"
+                  placeholder="Oppure inserisci risposta libera"
+                  [value]="questionDrafts()[question.id] ?? ''"
+                  (input)="setQuestionDraft(question.id, $any($event.target).value)"
+                />
+                <button type="button" (click)="answerQuestion(question.id)" [disabled]="answeringQuestions()[question.id]">
+                  Invia
+                </button>
+              </div>
             </div>
           }
         } @else {

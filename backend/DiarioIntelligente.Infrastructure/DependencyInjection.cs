@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<IGoalItemRepository, GoalItemRepository>();
         services.AddScoped<IChatMessageRepository, ChatMessageRepository>();
         services.AddScoped<ICognitiveGraphService, CognitiveGraphService>();
+        services.AddScoped<IEntityNormalizationService, EntityNormalizationService>();
         services.AddScoped<IPersonalModelService, PersonalModelService>();
         services.AddScoped<ILedgerQueryService, LedgerQueryService>();
         services.AddScoped<IClarificationService, ClarificationService>();

@@ -201,3 +201,37 @@ Questa conversazione ha consolidato la direzione del progetto.
   - effetto pratico: casi come `Bressana` non appaiono piu come doppio `person + place` in mappa/ricerca, viene privilegiato `place`
 - aggiunto test di regressione `Search_Suppresses_Person_When_Same_Name_Place_Exists`
 - suite backend aggiornata a 17 test verdi
+
+### Aggiornamento successivo
+
+- implementato workstream algoritmo + mobile installabile (PWA) con priorita su precisione entity merge
+- nuovo endpoint operativo backend:
+  - `POST /api/operations/normalize/entities`
+  - risposta: `normalized`, `merged`, `suppressed`, `ambiguous`, `reindexed`
+- introdotto `EntityNormalizationService` user-scoped:
+  - normalizza conflitti `place/person` su stesso `NormalizedCanonicalName`
+  - non elimina anchor
+  - preserva casi con legami forti come ambigui
+  - merge sicuro alias/evidence verso `place` e soppressione `person` debole (`person_suppressed`)
+  - idempotenza verificata via test
+- hardening ingestion persone/luoghi:
+  - aggiunti strong-person hints
+  - mention deboli senza segnali forti non creano nuove persone
+- `NodeSearchItemResponse` esteso con `resolutionState` (`normal|ambiguous|suppressed_candidate`)
+- `NodeViewResponse` esteso con `resolutionNotes` per audit/debug
+- dashboard operazioni aggiornata:
+  - aggiunto bottone `Normalize Entities`
+  - guida esplicita su quando usare `Normalize`, `Reindex`, `Rebuild+Reindex`
+- active learning chiuso lato UI:
+  - sezione domande rapide ora supporta risposta inline
+  - chiamata a `POST /api/profile/questions/{id}/answer` e refresh automatico di profilo/domande
+- PWA mobile installabile implementata:
+  - aggiunti Service Worker Angular e manifest web app
+  - aggiunte icone PWA (`192/512` incluse) e `apple-touch-icon`
+  - metadati mobile in `index.html` (`theme-color`, apple web app meta)
+  - install flow Android (`beforeinstallprompt`) + fallback istruzioni iOS
+  - nuovo servizio frontend `InstallPromptService`
+  - layout responsive con topbar mobile + bottom nav core routes + safe-area support
+- test e build:
+  - `dotnet test` backend verde: 20 test passati
+  - `npm run build` frontend verde (resta warning budget SCSS dashboard)

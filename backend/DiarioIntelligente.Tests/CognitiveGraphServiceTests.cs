@@ -235,8 +235,8 @@ public class CognitiveGraphServiceTests
             .Select(x => x.Kind)
             .ToListAsync();
 
-        Assert.Contains("person", allNodes);
         Assert.Contains("place", allNodes);
+        Assert.DoesNotContain("person", allNodes);
 
         var visible = await service.SearchNodesAsync(user.Id, "bressana", 20);
         Assert.Contains(visible.Items, x => x.Kind == "place" && x.CanonicalName == "Bressana");

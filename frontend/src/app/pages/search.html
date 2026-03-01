@@ -67,6 +67,9 @@
               <article class="result-card entity-card">
                 <p class="pill">{{ entity.kind }}</p>
                 <h4>{{ entity.canonicalName }}</h4>
+                @if (entity.resolutionState && entity.resolutionState !== 'normal') {
+                  <p class="result-meta">Stato: {{ entity.resolutionState }}</p>
+                }
                 @if (entity.anchorKey) {
                   <p class="result-meta">Anchor: {{ entity.anchorKey }}</p>
                 }

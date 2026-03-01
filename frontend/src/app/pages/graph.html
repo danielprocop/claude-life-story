@@ -54,6 +54,9 @@
         <article class="node-card">
           <p class="pill" [style.background]="colorForKind(node.kind)">{{ node.kind }}</p>
           <h3>{{ node.canonicalName }}</h3>
+          @if (node.resolutionState !== 'normal') {
+            <p class="meta resolution">{{ node.resolutionState }}</p>
+          }
           @if (node.anchorKey) {
             <p class="meta">Anchor: {{ node.anchorKey }}</p>
           }

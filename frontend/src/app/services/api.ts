@@ -258,6 +258,7 @@ export interface EntitySearchHit {
   aliases: string[];
   evidenceCount: number;
   updatedAt: string;
+  resolutionState: 'normal' | 'ambiguous' | 'suppressed_candidate' | string;
 }
 
 export interface NodeSearchResponse {
@@ -275,6 +276,7 @@ export interface NodeSearchItemResponse {
   aliases: string[];
   evidenceCount: number;
   updatedAt: string;
+  resolutionState: 'normal' | 'ambiguous' | 'suppressed_candidate' | string;
 }
 
 export interface NodeKindCountResponse {
@@ -290,6 +292,7 @@ export interface NodeViewResponse {
   aliases: string[];
   relations: NodeRelationResponse[];
   evidence: NodeEvidenceResponse[];
+  resolutionNotes: string[];
   person: PersonNodeViewResponse | null;
   event: EventNodeViewResponse | null;
 }
@@ -361,6 +364,14 @@ export interface RebuildMemoryResponse {
 }
 
 export interface ReindexEntitiesResponse {
+  reindexed: number;
+}
+
+export interface NormalizeEntitiesResponse {
+  normalized: number;
+  merged: number;
+  suppressed: number;
+  ambiguous: number;
   reindexed: number;
 }
 
@@ -510,5 +521,9 @@ export class Api {
 
   reindexEntities(): Observable<ReindexEntitiesResponse> {
     return this.http.post<ReindexEntitiesResponse>(`${this.baseUrl}/operations/reindex/entities`, {});
+  }
+
+  normalizeEntities(): Observable<NormalizeEntitiesResponse> {
+    return this.http.post<NormalizeEntitiesResponse>(`${this.baseUrl}/operations/normalize/entities`, {});
   }
 }
