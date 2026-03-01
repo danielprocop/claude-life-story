@@ -242,6 +242,24 @@ public class CognitiveGraphServiceTests
         Assert.Contains(nodes, x => x.CanonicalName == "Stoicismo" && x.Kind == "idea");
     }
 
+    [Fact]
+    public async Task Does_Not_Classify_Standalone_Place_As_Person()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await fixture.ProcessAsync(user.Id, "oggi sono in Milano tutto il giorno");
+
+        await using var db = fixture.CreateDbContext();
+        var milanoNodes = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.NormalizedCanonicalName == "milano")
+            .Select(x => new { x.CanonicalName, x.Kind })
+            .ToListAsync();
+
+        var node = Assert.Single(milanoNodes);
+        Assert.Equal("place", node.Kind);
+    }
+
     private sealed class TestFixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;

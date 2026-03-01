@@ -15,7 +15,8 @@ public record NodeViewResponse(
 public record NodeSearchResponse(
     string Query,
     List<NodeSearchItemResponse> Items,
-    int TotalCount
+    int TotalCount,
+    List<NodeKindCountResponse> KindCounts
 );
 
 public record NodeSearchItemResponse(
@@ -26,6 +27,11 @@ public record NodeSearchItemResponse(
     List<string> Aliases,
     int EvidenceCount,
     DateTime UpdatedAt
+);
+
+public record NodeKindCountResponse(
+    string Kind,
+    int Count
 );
 
 public record NodeRelationResponse(

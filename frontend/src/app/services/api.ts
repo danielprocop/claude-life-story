@@ -264,6 +264,7 @@ export interface NodeSearchResponse {
   query: string;
   items: NodeSearchItemResponse[];
   totalCount: number;
+  kindCounts: NodeKindCountResponse[];
 }
 
 export interface NodeSearchItemResponse {
@@ -274,6 +275,11 @@ export interface NodeSearchItemResponse {
   aliases: string[];
   evidenceCount: number;
   updatedAt: string;
+}
+
+export interface NodeKindCountResponse {
+  kind: string;
+  count: number;
 }
 
 export interface NodeViewResponse {

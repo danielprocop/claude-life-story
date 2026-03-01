@@ -112,6 +112,30 @@
   }
 }
 
+.entity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.kind-filter {
+  border-radius: 999px;
+  border: 1px solid #d8e2ea;
+  background: #fff;
+  color: #526577;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &[data-active='true'] {
+    border-color: #9f4a20;
+    background: #fff4ea;
+    color: #7f3a16;
+  }
+}
+
 .result-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

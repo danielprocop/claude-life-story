@@ -66,6 +66,11 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
 
         var changedEntities = new List<CanonicalEntity>();
         var roleContext = new Dictionary<string, CanonicalEntity>(StringComparer.OrdinalIgnoreCase);
+        var standalonePlaceMentions = ExtractStandalonePlaceMentions(entry.Content).ToList();
+        var normalizedStandalonePlaces = standalonePlaceMentions
+            .Select(Normalize)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         foreach (var mention in ExtractRoleMentions(entry.Content))
         {
@@ -99,6 +104,17 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         var resolvedNameMentions = new Dictionary<string, CanonicalEntity>(StringComparer.OrdinalIgnoreCase);
         foreach (var personName in ExtractStandalonePersonMentions(entry.Content, analysis))
         {
+            var normalizedPersonName = Normalize(personName);
+            if (normalizedStandalonePlaces.Contains(normalizedPersonName))
+            {
+                var alreadyKnownPerson = entities
+                    .Where(x => x.Kind == "person")
+                    .Any(x => IsNameMatch(x, personName));
+
+                if (!alreadyKnownPerson)
+                    continue;
+            }
+
             if (TryResolveRoleContextByNameHint(roleContext, personName, out var anchoredEntity))
             {
                 ApplyCanonicalName(anchoredEntity, personName, anchoredEntity.CanonicalName);
@@ -119,6 +135,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             analysis,
             entities,
             changedEntities,
+            standalonePlaceMentions,
             cancellationToken);
 
         var eventSignal = ExtractEventSignal(entry.Content, entry.CreatedAt, analysis, resolvedNameMentions, roleContext);
@@ -282,6 +299,17 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         }
 
         var totalCount = await filtered.CountAsync(cancellationToken);
+        var kinds = await filtered
+            .Select(x => x.Kind)
+            .ToListAsync(cancellationToken);
+
+        var kindCounts = kinds
+            .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .Select(group => new NodeKindCountResponse(group.Key, group.Count()))
+            .OrderByDescending(x => x.Count)
+            .ThenBy(x => x.Kind)
+            .Take(24)
+            .ToList();
 
         var maxCandidates = Math.Clamp(safeLimit * 8, 48, 320);
         var candidates = await filtered
@@ -315,7 +343,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
                 x.Entity.UpdatedAt))
             .ToList();
 
-        return new NodeSearchResponse(rawQuery, ranked, totalCount);
+        return new NodeSearchResponse(rawQuery, ranked, totalCount, kindCounts);
     }
 
     public async Task<NodeViewResponse?> GetNodeViewAsync(Guid userId, Guid entityId, CancellationToken cancellationToken = default)
@@ -723,6 +751,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
         AiAnalysisResult analysis,
         List<CanonicalEntity> entities,
         List<CanonicalEntity> changedEntities,
+        IReadOnlyCollection<string> standalonePlaceMentions,
         CancellationToken cancellationToken)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -798,7 +827,7 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             MarkChanged(entity, changedEntities);
         }
 
-        foreach (var place in ExtractStandalonePlaceMentions(entry.Content))
+        foreach (var place in standalonePlaceMentions)
         {
             var key = $"place:{place}";
             if (!seen.Add(key))

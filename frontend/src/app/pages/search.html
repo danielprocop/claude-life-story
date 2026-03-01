@@ -44,27 +44,43 @@
       <section class="result-section">
         <div class="section-header">
           <h3>Entita canoniche</h3>
-          <span>{{ results()!.entities.length }}</span>
+          <span>{{ filteredEntities().length }}</span>
         </div>
 
-        <div class="result-grid">
-          @for (entity of results()!.entities; track entity.id) {
-            <article class="result-card entity-card">
-              <p class="pill">{{ entity.kind }}</p>
-              <h4>{{ entity.canonicalName }}</h4>
-              @if (entity.anchorKey) {
-                <p class="result-meta">Anchor: {{ entity.anchorKey }}</p>
-              }
-              @if (entity.aliases.length) {
-                <p class="result-text">Alias: {{ entity.aliases.join(', ') }}</p>
-              }
-              <p class="result-meta">
-                {{ entity.evidenceCount }} evidenze · aggiornato {{ entity.updatedAt | date:'dd MMM yyyy, HH:mm' }}
-              </p>
-              <a [routerLink]="['/nodes', entity.id]">Apri nodo</a>
-            </article>
+        <div class="entity-filters">
+          @for (kind of entityFilters(); track kind.kind) {
+            <button
+              type="button"
+              class="kind-filter"
+              [attr.data-active]="selectedEntityKind() === kind.kind"
+              (click)="setEntityKind(kind.kind)">
+              {{ kind.kind }}: {{ kind.count }}
+            </button>
           }
         </div>
+
+        @if (!filteredEntities().length) {
+          <p class="result-meta">Nessuna entita per il tipo selezionato.</p>
+        } @else {
+          <div class="result-grid">
+            @for (entity of filteredEntities(); track entity.id) {
+              <article class="result-card entity-card">
+                <p class="pill">{{ entity.kind }}</p>
+                <h4>{{ entity.canonicalName }}</h4>
+                @if (entity.anchorKey) {
+                  <p class="result-meta">Anchor: {{ entity.anchorKey }}</p>
+                }
+                @if (entity.aliases.length) {
+                  <p class="result-text">Alias: {{ entity.aliases.join(', ') }}</p>
+                }
+                <p class="result-meta">
+                  {{ entity.evidenceCount }} evidenze · aggiornato {{ entity.updatedAt | date:'dd MMM yyyy, HH:mm' }}
+                </p>
+                <a [routerLink]="['/nodes', entity.id]">Apri nodo</a>
+              </article>
+            }
+          </div>
+        }
       </section>
     }
 

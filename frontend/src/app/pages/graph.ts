@@ -16,6 +16,7 @@ export class Graph implements OnInit {
   readonly query = signal('');
   readonly loading = signal(true);
   readonly response = signal<NodeSearchResponse | null>(null);
+  readonly selectedKind = signal('all');
 
   ngOnInit(): void {
     this.loadNodes();
@@ -30,22 +31,45 @@ export class Graph implements OnInit {
     this.api.getNodes(this.query(), 60).subscribe({
       next: (res) => {
         this.response.set(res);
+        if (this.selectedKind() !== 'all' && !res.kindCounts.some((x) => x.kind === this.selectedKind())) {
+          this.selectedKind.set('all');
+        }
         this.loading.set(false);
       },
       error: () => {
-        this.response.set({ query: this.query(), items: [], totalCount: 0 });
+        this.response.set({ query: this.query(), items: [], totalCount: 0, kindCounts: [] });
+        this.selectedKind.set('all');
         this.loading.set(false);
       },
     });
   }
 
-  groupedByKind(): Record<string, number> {
+  setKindFilter(kind: string): void {
+    this.selectedKind.set(kind);
+  }
+
+  filteredItems() {
     const items = this.response()?.items ?? [];
-    const map: Record<string, number> = {};
-    for (const item of items) {
-      map[item.kind] = (map[item.kind] ?? 0) + 1;
+    const activeKind = this.selectedKind();
+    if (activeKind === 'all') {
+      return items;
     }
-    return map;
+
+    return items.filter((item) => item.kind === activeKind);
+  }
+
+  kindFilters() {
+    const response = this.response();
+    if (!response) {
+      return [];
+    }
+
+    const items = response.kindCounts.map((item) => ({
+      kind: item.kind,
+      count: item.count,
+    }));
+
+    return [{ kind: 'all', count: response.totalCount }, ...items];
   }
 
   colorForKind(kind: string): string {

@@ -179,3 +179,17 @@ Questa conversazione ha consolidato la direzione del progetto.
   - `POST /api/operations/reindex/entities`
 - build frontend (`npm run build`) completata con successo
 - suite backend riconfermata verde (`dotnet test`, 15 test passati)
+
+### Aggiornamento successivo
+
+- retrieval UX migliorata:
+  - pagina `Search` ora combina `api/search` + `api/nodes` in parallelo, usando il ranking nodi canonici come fonte primaria per le entita
+  - aggiunti filtri dinamici per tipo entita (`all`, `person`, `place`, `goal`, ecc.) in search
+- mappa cognitiva migliorata:
+  - filtri dinamici per tipo nodo con stato attivo
+  - conteggio `visibili` vs `totali`
+- backend search nodi esteso con `kindCounts` nel payload (`NodeSearchResponse`) per supportare filtri UI dinamici
+- fix classificazione nodi:
+  - se un token e gia riconosciuto come luogo standalone, non viene creato come nuova persona (evita duplicati `Milano` sia person che place)
+- test backend estesi con caso specifico `place != person` su mention standalone
+- suite aggiornata: `dotnet test` verde con 16 test; `npm run build` frontend verde

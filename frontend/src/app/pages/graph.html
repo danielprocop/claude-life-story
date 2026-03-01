@@ -7,8 +7,8 @@
     @if (response()) {
       <div class="graph-stats">
         <div class="stat">
-          <span class="stat-value">{{ response()!.items.length }}</span>
-          <span class="stat-label">Nodi</span>
+          <span class="stat-value">{{ filteredItems().length }}</span>
+          <span class="stat-label">Visibili</span>
         </div>
         <div class="stat">
           <span class="stat-value">{{ response()!.totalCount }}</span>
@@ -35,13 +35,22 @@
     <div class="empty">Nessun nodo trovato. Inserisci nuove entry per costruire la memoria canonica.</div>
   } @else {
     <section class="kind-summary">
-      @for (item of groupedByKind() | keyvalue; track item.key) {
-        <div class="kind-pill">{{ item.key }}: {{ item.value }}</div>
+      @for (item of kindFilters(); track item.kind) {
+        <button
+          type="button"
+          class="kind-pill"
+          [attr.data-active]="selectedKind() === item.kind"
+          (click)="setKindFilter(item.kind)">
+          {{ item.kind }}: {{ item.count }}
+        </button>
       }
     </section>
 
-    <section class="node-grid">
-      @for (node of response()!.items; track node.id) {
+    @if (!filteredItems().length) {
+      <div class="empty">Nessun nodo per il filtro tipo selezionato.</div>
+    } @else {
+      <section class="node-grid">
+      @for (node of filteredItems(); track node.id) {
         <article class="node-card">
           <p class="pill" [style.background]="colorForKind(node.kind)">{{ node.kind }}</p>
           <h3>{{ node.canonicalName }}</h3>
@@ -57,6 +66,7 @@
           <a [routerLink]="['/nodes', node.id]">Apri nodo</a>
         </article>
       }
-    </section>
+      </section>
+    }
   }
 </div>
