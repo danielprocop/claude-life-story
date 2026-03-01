@@ -32,10 +32,38 @@
     <div class="state-card empty">Nessuna entry ancora. Vai a scrivere qualcosa!</div>
   } @else {
     <div class="timeline-controls">
-      <div class="timeline-meta">
-        <span class="window-label">{{ windowLabel() }}</span>
-        <span class="window-count">{{ windowEntriesCount() }} entry visibili</span>
+      <div class="timeline-meta-row">
+        <div class="timeline-meta">
+          <span class="window-label">{{ windowLabel() }}</span>
+          <span class="window-count">{{ windowEntriesCount() }} entry visibili</span>
+        </div>
+        <button type="button" class="focus-current-btn" (click)="centerOnCurrentPeriod()">
+          Vai al periodo attuale
+        </button>
       </div>
+
+      @if (overviewBuckets().length > 0) {
+        <div class="timeline-overview">
+          <div class="overview-head">
+            <span>Panoramica periodi caricati</span>
+            <span>{{ overviewBuckets().length }} blocchi</span>
+          </div>
+          <div class="overview-strip" role="list" aria-label="Panoramica timeline">
+            @for (point of overviewBuckets(); track point.bucketKey) {
+              <button
+                type="button"
+                class="overview-bucket"
+                [class.active]="point.isActive"
+                [class.empty]="point.entryCount === 0"
+                [attr.aria-label]="'Vai a ' + point.label + ', ' + point.entryCount + ' entry'"
+                [title]="point.label + ' • ' + point.entryCount + ' entry'"
+                (click)="jumpToOverviewBucket(point.index)">
+                <span class="overview-fill" [style.height.%]="point.heightPercent"></span>
+              </button>
+            }
+          </div>
+        </div>
+      }
     </div>
 
     <div class="timeline-scroll-wrap">
@@ -84,12 +112,14 @@
         <div class="timeline-spacer" aria-hidden="true"></div>
       </div>
 
-      @if (scrollLeftVisible() || scrollRightVisible()) {
-        <p class="scroll-hint">Scorri orizzontalmente: il range si estende automaticamente.</p>
-      }
-      @if (loadingMorePrevious() || loadingMoreNext()) {
-        <p class="scroll-loading">Caricamento altri periodi...</p>
-      }
+      <div class="scroll-status">
+        <p class="scroll-hint" [class.hidden]="!(scrollLeftVisible() || scrollRightVisible())">
+          Scorri orizzontalmente: il range si estende automaticamente.
+        </p>
+        <p class="scroll-loading" [class.hidden]="!(loadingMorePrevious() || loadingMoreNext())">
+          Caricamento altri periodi...
+        </p>
+      </div>
     </div>
   }
 </div>

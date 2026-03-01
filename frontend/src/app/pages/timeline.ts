@@ -48,6 +48,8 @@ export class Timeline implements OnInit, AfterViewInit {
   readonly loadingMoreNext = signal(false);
   readonly activeRangeLabel = signal('');
   readonly activeVisibleEntries = signal(0);
+  readonly visibleBucketStartIndex = signal(-1);
+  readonly visibleBucketEndIndex = signal(-1);
   readonly availableViews: TimelineViewMode[] = ['day', 'week', 'month', 'year'];
   readonly totalEntriesLoaded = computed(() =>
     (this.timeline()?.buckets ?? []).reduce((acc, bucket) => acc + bucket.entryCount, 0)
@@ -69,6 +71,25 @@ export class Timeline implements OnInit, AfterViewInit {
   readonly windowEntriesCount = computed(() =>
     this.activeVisibleEntries() > 0 ? this.activeVisibleEntries() : this.totalEntriesLoaded()
   );
+  readonly overviewBuckets = computed(() => {
+    const buckets = this.timeline()?.buckets ?? [];
+    const maxEntries = buckets.reduce((max, bucket) => Math.max(max, bucket.entryCount), 0);
+    const scaleMax = Math.max(1, maxEntries);
+    const visibleStart = this.visibleBucketStartIndex();
+    const visibleEnd = this.visibleBucketEndIndex();
+
+    return buckets.map((bucket, index) => {
+      const scaledHeight = Math.round((bucket.entryCount / scaleMax) * 100);
+      return {
+        index,
+        bucketKey: bucket.bucketKey,
+        label: bucket.label,
+        entryCount: bucket.entryCount,
+        heightPercent: bucket.entryCount === 0 ? 16 : Math.max(20, scaledHeight),
+        isActive: visibleStart >= 0 && visibleEnd >= 0 && index >= visibleStart && index <= visibleEnd,
+      };
+    });
+  });
 
   constructor(private api: Api) {}
 
@@ -94,6 +115,8 @@ export class Timeline implements OnInit, AfterViewInit {
     this.resetDirectionalLoadState();
     this.activeRangeLabel.set('');
     this.activeVisibleEntries.set(0);
+    this.visibleBucketStartIndex.set(-1);
+    this.visibleBucketEndIndex.set(-1);
     this.loadTimeline();
   }
 
@@ -130,6 +153,30 @@ export class Timeline implements OnInit, AfterViewInit {
     this.updateScrollButtons();
     this.updateVisibleWindowMeta();
     this.maybeLoadMoreFromScroll();
+  }
+
+  jumpToOverviewBucket(index: number): void {
+    const timeline = this.timeline();
+    const element = this.timelineScrollEl?.nativeElement;
+    if (!timeline || !element || index < 0 || index >= timeline.buckets.length) {
+      return;
+    }
+
+    const bucket = timeline.buckets[index];
+    const target = element.querySelector<HTMLElement>(`[data-bucket-key="${bucket.bucketKey}"]`);
+    if (!target) {
+      return;
+    }
+
+    const targetLeft = target.offsetLeft - element.clientWidth / 2 + target.clientWidth / 2;
+    const bounded = Math.max(0, Math.min(targetLeft, element.scrollWidth - element.clientWidth));
+    element.scrollTo({ left: bounded, behavior: 'smooth' });
+    this.updateVisibleWindowMeta();
+    this.updateScrollButtons();
+  }
+
+  centerOnCurrentPeriod(): void {
+    this.centerCurrentBucket();
   }
 
   private loadTimeline(cursorUtc?: string): void {
@@ -291,6 +338,8 @@ export class Timeline implements OnInit, AfterViewInit {
     if (!element || !timeline || timeline.buckets.length === 0) {
       this.activeRangeLabel.set('');
       this.activeVisibleEntries.set(0);
+      this.visibleBucketStartIndex.set(-1);
+      this.visibleBucketEndIndex.set(-1);
       return;
     }
 
@@ -298,6 +347,8 @@ export class Timeline implements OnInit, AfterViewInit {
     if (bucketEls.length === 0) {
       this.activeRangeLabel.set('');
       this.activeVisibleEntries.set(0);
+      this.visibleBucketStartIndex.set(-1);
+      this.visibleBucketEndIndex.set(-1);
       return;
     }
 
@@ -336,6 +387,8 @@ export class Timeline implements OnInit, AfterViewInit {
 
     const safeFirst = Math.max(0, Math.min(firstVisible, timeline.buckets.length - 1));
     const safeLast = Math.max(safeFirst, Math.min(lastVisible, timeline.buckets.length - 1));
+    this.visibleBucketStartIndex.set(safeFirst);
+    this.visibleBucketEndIndex.set(safeLast);
     const firstLabel = timeline.buckets[safeFirst].label;
     const lastLabel = timeline.buckets[safeLast].label;
     this.activeRangeLabel.set(firstLabel === lastLabel ? firstLabel : `${firstLabel} → ${lastLabel}`);
