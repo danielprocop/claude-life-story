@@ -22,13 +22,20 @@ public sealed class AdminFeedbackController : AdminAuthenticatedController
         if (authorizationResult != null)
             return authorizationResult;
 
-        var response = await _feedbackAdminService.PreviewCaseAsync(
-            GetUserId(),
-            role,
-            request,
-            HttpContext.RequestAborted);
+        try
+        {
+            var response = await _feedbackAdminService.PreviewCaseAsync(
+                GetUserId(),
+                role,
+                request,
+                HttpContext.RequestAborted);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpPost("cases/apply")]
@@ -38,13 +45,20 @@ public sealed class AdminFeedbackController : AdminAuthenticatedController
         if (authorizationResult != null)
             return authorizationResult;
 
-        var response = await _feedbackAdminService.ApplyCaseAsync(
-            GetUserId(),
-            role,
-            request,
-            HttpContext.RequestAborted);
+        try
+        {
+            var response = await _feedbackAdminService.ApplyCaseAsync(
+                GetUserId(),
+                role,
+                request,
+                HttpContext.RequestAborted);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpGet("cases")]
@@ -107,16 +121,23 @@ public sealed class AdminFeedbackController : AdminAuthenticatedController
         if (authorizationResult != null)
             return authorizationResult;
 
-        var response = await _feedbackAdminService.RevertCaseAsync(
-            GetUserId(),
-            role,
-            id,
-            HttpContext.RequestAborted);
+        try
+        {
+            var response = await _feedbackAdminService.RevertCaseAsync(
+                GetUserId(),
+                role,
+                id,
+                HttpContext.RequestAborted);
 
-        if (response == null)
-            return NotFound();
+            if (response == null)
+                return NotFound();
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpPost("assist")]

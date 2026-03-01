@@ -491,3 +491,31 @@ Questa conversazione ha consolidato la direzione del progetto.
 - test automatici aggiornati:
   - nuove regression `G7`, `G8`, `G9` in `FeedbackSystemTests`
   - suite backend verde: `37/37`
+
+### Aggiornamento successivo
+
+- rerun finale su Daniel dopo deploy manuale App Runner (`START_DEPLOYMENT` -> `SUCCEEDED`):
+  - review queue user-scoped: `[]` (0 issue) salvato in `.runlogs/daniel-final-review-queue-after-fix-attempt.json`
+  - audit user-scoped: `.runlogs/data-quality/20260301-190001/audit/report.md`
+- numeri audit finali Daniel:
+  - `entries=11`, `canonical_entities=42`, `memory_events=2`
+  - suspicious: `cross_kind_collisions=3`, `duplicate_within_kind=1`, `memory_events_missing_amounts=2`
+  - collisioni residue: `Vidrio (organization/place)`, `MDS (organization/place)`, `Pizza (food/object)`
+- nota operativa:
+  - endpoint admin feedback T3 (`preview/apply`) risponde ancora `500` su payload di merge cross-kind per Daniel
+  - comportamento coerente con guardrail merge lato service, ma manca ancora gestione di errore in risposta controllata (4xx) lato API
+
+### Aggiornamento successivo
+
+- verifica live ripetuta su Daniel (token Cognito rigenerato):
+  - review queue user-scoped: `[]` (0 issue)
+  - audit user-scoped: `.runlogs/data-quality/20260301-190453/audit/report.md`
+- numeri confermati:
+  - `entries=11`, `canonical_entities=42`, `memory_events=2`
+  - suspicious: `cross_kind_collisions=3`, `duplicate_within_kind=1`, `memory_events_missing_amounts=2`
+- fix backend applicato (codice pronto al deploy):
+  - `AdminFeedbackController` ora intercetta `InvalidOperationException` su:
+    - `POST /api/admin/feedback/cases/preview`
+    - `POST /api/admin/feedback/cases/apply`
+    - `POST /api/admin/feedback/cases/{id}/revert`
+  - risposta ora `400 BadRequest` con payload `{ "error": "..." }` per merge non valido, invece di `500`.
