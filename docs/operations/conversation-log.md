@@ -334,3 +334,13 @@ Questa conversazione ha consolidato la direzione del progetto.
 - validazione locale:
   - `dotnet test backend/DiarioIntelligente.sln` verde (31 test)
   - `npm run build` frontend verde (restano warning budget SCSS non bloccanti)
+
+### Aggiornamento successivo
+
+- introdotto meccanismo anti-stale cache per frontend PWA:
+  - nuovo servizio `PwaUpdateService` (Angular `SwUpdate`)
+  - check aggiornamenti periodico ogni 5 minuti
+  - check iniziale all'avvio app
+  - su `VERSION_READY` attiva nuova versione e forza reload pagina
+  - guard anti-loop reload (`localStorage` con finestra 60s)
+- wiring via `APP_INITIALIZER` in `app.config.ts` per avvio automatico senza interventi utente
