@@ -193,3 +193,11 @@ Questa conversazione ha consolidato la direzione del progetto.
   - se un token e gia riconosciuto come luogo standalone, non viene creato come nuova persona (evita duplicati `Milano` sia person che place)
 - test backend estesi con caso specifico `place != person` su mention standalone
 - suite aggiornata: `dotnet test` verde con 16 test; `npm run build` frontend verde
+
+### Aggiornamento successivo
+
+- fix duplicati cross-tipo in retrieval:
+  - `SearchNodesAsync` ora sopprime i nodi `person` non-anchor quando esiste un nodo `place` con lo stesso nome normalizzato
+  - effetto pratico: casi come `Bressana` non appaiono piu come doppio `person + place` in mappa/ricerca, viene privilegiato `place`
+- aggiunto test di regressione `Search_Suppresses_Person_When_Same_Name_Place_Exists`
+- suite backend aggiornata a 17 test verdi

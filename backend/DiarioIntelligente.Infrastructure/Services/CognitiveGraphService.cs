@@ -288,6 +288,15 @@ public sealed class CognitiveGraphService : ICognitiveGraphService
             topFromOpenSearch = await _entityRetrievalService.SearchEntityCandidatesAsync(userId, rawQuery, safeLimit * 2, cancellationToken);
 
         IQueryable<CanonicalEntity> filtered = _db.CanonicalEntities.Where(x => x.UserId == userId);
+        var placeNormalizedNames = _db.CanonicalEntities
+            .Where(x => x.UserId == userId && x.Kind == "place")
+            .Select(x => x.NormalizedCanonicalName);
+
+        filtered = filtered.Where(x =>
+            x.Kind != "person" ||
+            !string.IsNullOrWhiteSpace(x.AnchorKey) ||
+            !placeNormalizedNames.Contains(x.NormalizedCanonicalName));
+
         if (!string.IsNullOrWhiteSpace(normalizedQuery))
         {
             filtered = filtered.Where(x =>

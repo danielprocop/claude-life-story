@@ -214,6 +214,36 @@ public class CognitiveGraphServiceTests
     }
 
     [Fact]
+    public async Task Search_Suppresses_Person_When_Same_Name_Place_Exists()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        await fixture.ProcessAsync(user.Id, "ho sentito Bressana oggi");
+        await fixture.ProcessAsync(user.Id, "oggi sono a Bressana");
+
+        await using var db = fixture.CreateDbContext();
+        var service = new CognitiveGraphService(
+            db,
+            new NoOpSearchProjectionService(new NullLogger<NoOpSearchProjectionService>()),
+            new NoOpEntityRetrievalService(),
+            new ClarificationService(db),
+            new NullLogger<CognitiveGraphService>());
+
+        var allNodes = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.NormalizedCanonicalName == "bressana")
+            .Select(x => x.Kind)
+            .ToListAsync();
+
+        Assert.Contains("person", allNodes);
+        Assert.Contains("place", allNodes);
+
+        var visible = await service.SearchNodesAsync(user.Id, "bressana", 20);
+        Assert.Contains(visible.Items, x => x.Kind == "place" && x.CanonicalName == "Bressana");
+        Assert.DoesNotContain(visible.Items, x => x.Kind == "person" && x.CanonicalName == "Bressana");
+    }
+
+    [Fact]
     public async Task Creates_Varied_Node_Types_From_Concepts_And_Places()
     {
         await using var fixture = await TestFixture.CreateAsync();
