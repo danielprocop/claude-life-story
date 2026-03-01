@@ -202,6 +202,39 @@
   }
 }
 
+.help-card {
+  border-radius: 14px;
+  border: 1px solid #e4eaf0;
+  background: #fffaf4;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.help-title {
+  margin: 0;
+  font-weight: 800;
+  color: #142130;
+}
+
+.inline-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #314254;
+}
+
+.code-block {
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid #1f2f3f;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 10px 12px;
+  font-size: 12px;
+  overflow: auto;
+  white-space: pre;
+}
+
 .chip-list {
   display: flex;
   flex-wrap: wrap;

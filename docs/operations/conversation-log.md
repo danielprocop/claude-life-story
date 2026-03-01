@@ -387,3 +387,18 @@ Questa conversazione ha consolidato la direzione del progetto.
   - duplicati `event` per la stessa data (`Evento 2026-03-01`) dentro lo stesso utente
   - eventi `expense` senza importi (`EventTotal/MyShare` null) e senza partecipanti reali
 - output dettagliato salvato localmente in `.runlogs/data-quality/<timestamp>/audit/*` (non committato) per ispezione e debug
+
+### Aggiornamento successivo
+
+- migliorata la comprensibilita del feedback system in UI:
+  - pagina nodo: aggiunta scheda guida per template (cosa fa / esempi / distinzione preview vs apply)
+  - preview actions ora leggibili: label + spiegazione + payload JSON formattato
+  - pagina `/feedback-admin`: aggiunta modalita **Guidato** (campi form + payload auto-generato) oltre a modalita **JSON**
+  - preview/apply ora mostrano anche la lista actions (non solo impatto)
+- aggiunto reset dati user-scoped (ripartenza da zero):
+  - backend: `POST /api/operations/reset/me` elimina entry + memoria derivata dell'utente autenticato
+  - dashboard: bottone **Reset miei dati** con conferma esplicita
+  - doc aggiornata: `docs/operations/data-reset-runbook.md` include percorso user-scoped raccomandato
+- estesi i test backend (golden regressions):
+  - `lei` non deve creare un nodo `PERSON` anche se l'AI lo etichetta come person
+  - `a Irina` non deve creare un nodo `place` quando il nome e un strong person hint

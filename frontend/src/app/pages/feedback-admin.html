@@ -60,24 +60,180 @@
 
     <article class="card">
       <h3>Preview / Apply</h3>
+      <p class="hint">
+        <strong>Preview</strong> simula (non salva). <strong>Apply</strong> salva le actions in Aurora, incrementa la policy
+        e avvia un replay/backfill mirato.
+      </p>
+      <p class="hint">
+        Consiglio: per correzioni su un nodo specifico, usa la pagina del nodo (meno errori). Qui e utile per regole globali
+        o operazioni avanzate.
+      </p>
+
+      <div class="mode-toggle">
+        <button type="button" class="secondary-button" [class.active]="editMode() === 'wizard'" (click)="editMode.set('wizard')">
+          Guidato
+        </button>
+        <button type="button" class="secondary-button" [class.active]="editMode() === 'json'" (click)="editMode.set('json')">
+          JSON
+        </button>
+      </div>
+
       <div class="form-grid">
         <label>
           Template
-          <input type="text" [ngModel]="selectedTemplate()" (ngModelChange)="selectedTemplate.set($event)" />
+          <select [ngModel]="selectedTemplate()" (ngModelChange)="selectedTemplate.set($event)">
+            <option value="T4">T4 - Change entity type</option>
+            <option value="T5">T5 - Add/Remove alias</option>
+            <option value="T6">T6 - Force link rule</option>
+            <option value="T1">T1 - Block token global</option>
+            <option value="T2">T2 - Token type override global</option>
+          </select>
         </label>
         <label>
           Reason
           <input type="text" [ngModel]="reason()" (ngModelChange)="reason.set($event)" placeholder="Motivo del feedback" />
         </label>
       </div>
-      <label class="payload-label">
-        Payload JSON
-        <textarea
-          rows="10"
-          [ngModel]="payloadText()"
-          (ngModelChange)="payloadText.set($event)"
-          placeholder='{"entity_id":"..."}'></textarea>
-      </label>
+
+      @if (editMode() === 'wizard') {
+        @if (selectedTemplate() === 'T1' || selectedTemplate() === 'T2') {
+          <div class="form-grid">
+            <label>
+              Token
+              <input
+                type="text"
+                [ngModel]="wizardToken()"
+                (ngModelChange)="wizardToken.set($event)"
+                placeholder='Es. "inoltre" o "lei"' />
+              <small class="hint">Usa per stopword/pronomi/connector che non devono diventare entita.</small>
+            </label>
+
+            @if (selectedTemplate() === 'T1') {
+              <label>
+                Applies to
+                <select [ngModel]="wizardAppliesTo()" (ngModelChange)="wizardAppliesTo.set($event)">
+                  <option value="ANY">ANY</option>
+                  <option value="PERSON">PERSON</option>
+                  <option value="GOAL">GOAL</option>
+                </select>
+                <small class="hint">PERSON e piu sicuro. ANY e piu aggressivo.</small>
+              </label>
+              <label>
+                Classification
+                <select [ngModel]="wizardClassification()" (ngModelChange)="wizardClassification.set($event)">
+                  <option value="CONNECTIVE">CONNECTIVE</option>
+                  <option value="STOPWORD">STOPWORD</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </label>
+            }
+
+            @if (selectedTemplate() === 'T2') {
+              <label>
+                Forced type
+                <select [ngModel]="wizardForcedTokenType()" (ngModelChange)="wizardForcedTokenType.set($event)">
+                  <option value="STOPWORD">STOPWORD</option>
+                  <option value="CONNECTIVE">CONNECTIVE</option>
+                  <option value="ROLE_TRIGGER">ROLE_TRIGGER</option>
+                  <option value="TEMPORAL">TEMPORAL</option>
+                  <option value="OTHER">OTHER</option>
+                </select>
+              </label>
+            }
+          </div>
+        }
+
+        @if (selectedTemplate() === 'T4' || selectedTemplate() === 'T5' || selectedTemplate() === 'T6') {
+          <div class="form-row">
+            <input
+              type="text"
+              [ngModel]="wizardEntityQuery()"
+              (ngModelChange)="wizardEntityQuery.set($event)"
+              placeholder="Cerca entita (es. Irina)"
+              (blur)="searchWizardEntities()" />
+            <button type="button" class="secondary-button" (click)="searchWizardEntities()" [disabled]="wizardEntitySearchLoading()">
+              {{ wizardEntitySearchLoading() ? 'Ricerca...' : 'Cerca' }}
+            </button>
+          </div>
+          @if (wizardEntityId()) {
+            <p class="hint">Entity selezionata: <strong>{{ wizardEntityId() }}</strong></p>
+          }
+          @if (wizardEntityResults().length) {
+            <div class="entity-results">
+              @for (entity of wizardEntityResults(); track entity.id) {
+                <button type="button" class="entity-item" (click)="selectWizardEntity(entity)">
+                  {{ entity.canonicalName }} · {{ entity.kind }}
+                </button>
+              }
+            </div>
+          }
+
+          @if (selectedTemplate() === 'T4') {
+            <div class="form-grid">
+              <label>
+                New type
+                <input type="text" [ngModel]="wizardNewType()" (ngModelChange)="wizardNewType.set($event)" placeholder="Es. place" />
+                <small class="hint">Tipi comuni: person, place, goal, idea, organization, team, project, activity.</small>
+              </label>
+            </div>
+          }
+
+          @if (selectedTemplate() === 'T5') {
+            <div class="form-grid">
+              <label>
+                Alias
+                <input type="text" [ngModel]="wizardAlias()" (ngModelChange)="wizardAlias.set($event)" placeholder="Es. Felia" />
+              </label>
+              <label>
+                Op
+                <select [ngModel]="wizardAliasOp()" (ngModelChange)="wizardAliasOp.set($event)">
+                  <option value="ADD">ADD</option>
+                  <option value="REMOVE">REMOVE</option>
+                </select>
+              </label>
+            </div>
+          }
+
+          @if (selectedTemplate() === 'T6') {
+            <div class="form-grid">
+              <label>
+                Pattern kind
+                <select [ngModel]="wizardPatternKind()" (ngModelChange)="wizardPatternKind.set($event)">
+                  <option value="EXACT">EXACT</option>
+                  <option value="NORMALIZED">NORMALIZED</option>
+                  <option value="REGEX">REGEX</option>
+                </select>
+              </label>
+              <label>
+                Pattern value
+                <input type="text" [ngModel]="wizardPatternValue()" (ngModelChange)="wizardPatternValue.set($event)" placeholder="Es. mia madre" />
+              </label>
+              <label>
+                Near tokens (csv, opzionale)
+                <input type="text" [ngModel]="wizardNearTokens()" (ngModelChange)="wizardNearTokens.set($event)" placeholder="es. mamma,famiglia" />
+              </label>
+              <label>
+                Within chars (opzionale)
+                <input type="number" [ngModel]="wizardWithinChars()" (ngModelChange)="wizardWithinChars.set($event ? +$event : null)" />
+              </label>
+            </div>
+          }
+        }
+
+        <label class="payload-label">
+          Payload (auto-generato)
+          <pre class="code-block">{{ wizardPayloadPreview() }}</pre>
+        </label>
+      } @else {
+        <label class="payload-label">
+          Payload JSON
+          <textarea
+            rows="10"
+            [ngModel]="payloadText()"
+            (ngModelChange)="payloadText.set($event)"
+            placeholder='{"entity_id":"..."}'></textarea>
+        </label>
+      }
       <div class="actions">
         <button type="button" class="secondary-button" (click)="previewCase()" [disabled]="previewLoading() || applyLoading()">
           {{ previewLoading() ? 'Preview...' : 'Preview' }}
@@ -102,6 +258,19 @@
               }
             </ul>
           }
+          @if (preview.parsedActions.length) {
+            <p class="hint"><strong>Actions</strong>: modifiche atomiche che verranno persistite (policy) e usate dal compiler.</p>
+            <div class="queue-list">
+              @for (action of preview.parsedActions; track action.actionType + action.payloadJson) {
+                <article class="queue-item">
+                  <div>
+                    <p class="meta">{{ action.actionType }} · scope {{ action.scope }}</p>
+                    <pre class="code-block">{{ prettyJsonText(action.payloadJson) }}</pre>
+                  </div>
+                </article>
+              }
+            </div>
+          }
         </article>
       }
 
@@ -111,6 +280,19 @@
           <p>Case: {{ applied.caseId }}</p>
           <p>Policy version: {{ applied.policyVersion }}</p>
           <p>Replay job: {{ applied.replayJob.id }} ({{ applied.replayJob.status }})</p>
+          @if (applied.appliedActions.length) {
+            <p class="hint">Actions applicate:</p>
+            <div class="queue-list">
+              @for (action of applied.appliedActions; track action.actionType + action.payloadJson) {
+                <article class="queue-item">
+                  <div>
+                    <p class="meta">{{ action.actionType }} · scope {{ action.scope }}</p>
+                    <pre class="code-block">{{ prettyJsonText(action.payloadJson) }}</pre>
+                  </div>
+                </article>
+              }
+            </div>
+          }
         </article>
       }
     </article>

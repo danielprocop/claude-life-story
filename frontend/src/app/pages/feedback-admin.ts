@@ -33,8 +33,29 @@ export class FeedbackAdminPage implements OnInit, OnDestroy {
   readonly replayLoading = signal(false);
 
   readonly selectedTemplate = signal('T4');
-  readonly payloadText = signal('{\n  "entity_id": "",\n  "new_type": "place",\n  "reason": "manual_type_correction"\n}');
+  readonly editMode = signal<'wizard' | 'json'>('wizard');
+  readonly payloadText = signal('{\n  \"entity_id\": \"\",\n  \"new_type\": \"place\",\n  \"reason\": \"manual_type_correction\"\n}');
   readonly reason = signal('');
+
+  // Wizard fields (guided mode)
+  readonly wizardToken = signal('');
+  readonly wizardAppliesTo = signal<'ANY' | 'PERSON' | 'GOAL'>('PERSON');
+  readonly wizardClassification = signal<'CONNECTIVE' | 'STOPWORD' | 'OTHER'>('CONNECTIVE');
+  readonly wizardForcedTokenType = signal<'STOPWORD' | 'CONNECTIVE' | 'ROLE_TRIGGER' | 'TEMPORAL' | 'OTHER'>('CONNECTIVE');
+
+  readonly wizardEntityQuery = signal('');
+  readonly wizardEntityResults = signal<NodeSearchItemResponse[]>([]);
+  readonly wizardEntitySearchLoading = signal(false);
+  readonly wizardEntityId = signal('');
+
+  readonly wizardNewType = signal('place');
+  readonly wizardAlias = signal('');
+  readonly wizardAliasOp = signal<'ADD' | 'REMOVE'>('ADD');
+
+  readonly wizardPatternKind = signal<'EXACT' | 'NORMALIZED' | 'REGEX'>('NORMALIZED');
+  readonly wizardPatternValue = signal('');
+  readonly wizardNearTokens = signal('');
+  readonly wizardWithinChars = signal<number | null>(null);
 
   readonly previewLoading = signal(false);
   readonly applyLoading = signal(false);
@@ -108,15 +129,16 @@ export class FeedbackAdminPage implements OnInit, OnDestroy {
   }
 
   useQueueSuggestion(item: FeedbackReviewQueueItemResponse): void {
+    this.editMode.set('json');
     this.selectedTemplate.set(item.suggestedTemplateId);
-    this.payloadText.set(this.prettyJson(item.suggestedPayloadJson));
+    this.payloadText.set(this.prettyJsonText(item.suggestedPayloadJson));
     this.reason.set(`review_queue:${item.issueType}`);
     this.previewResult.set(null);
     this.applyResult.set(null);
   }
 
   previewCase(): void {
-    const payload = this.parsePayload();
+    const payload = this.editMode() === 'wizard' ? this.buildWizardPayload() : this.parsePayload();
     if (!payload || this.previewLoading()) return;
 
     this.previewLoading.set(true);
@@ -143,7 +165,7 @@ export class FeedbackAdminPage implements OnInit, OnDestroy {
   }
 
   applyCase(): void {
-    const payload = this.parsePayload();
+    const payload = this.editMode() === 'wizard' ? this.buildWizardPayload() : this.parsePayload();
     if (!payload || this.applyLoading()) return;
 
     this.applyLoading.set(true);
@@ -198,8 +220,9 @@ export class FeedbackAdminPage implements OnInit, OnDestroy {
 
     this.api.assistFeedbackTemplate(text).subscribe({
       next: suggestion => {
+        this.editMode.set('json');
         this.selectedTemplate.set(suggestion.suggestedTemplateId);
-        this.payloadText.set(this.prettyJson(suggestion.suggestedPayloadJson));
+        this.payloadText.set(this.prettyJsonText(suggestion.suggestedPayloadJson));
         this.feedbackStatus.set(
           `Assist: suggerito ${suggestion.suggestedTemplateId} (confidence ${Math.round(suggestion.confidence * 100)}%).`
         );
@@ -247,6 +270,38 @@ export class FeedbackAdminPage implements OnInit, OnDestroy {
         this.entityDebugLoading.set(false);
       },
     });
+  }
+
+  searchWizardEntities(): void {
+    const query = this.wizardEntityQuery().trim();
+    if (query.length < 2 || this.wizardEntitySearchLoading()) {
+      this.wizardEntityResults.set([]);
+      return;
+    }
+
+    this.wizardEntitySearchLoading.set(true);
+    this.api.adminSearchEntities(query).subscribe({
+      next: items => {
+        this.wizardEntityResults.set(items);
+        this.wizardEntitySearchLoading.set(false);
+      },
+      error: () => {
+        this.wizardEntityResults.set([]);
+        this.wizardEntitySearchLoading.set(false);
+      },
+    });
+  }
+
+  selectWizardEntity(entity: NodeSearchItemResponse): void {
+    this.wizardEntityId.set(entity.id);
+    this.wizardEntityQuery.set(`${entity.canonicalName}`);
+    this.wizardEntityResults.set([]);
+  }
+
+  wizardPayloadPreview(): string {
+    const payload = this.buildWizardPayload(false);
+    if (!payload) return '';
+    return JSON.stringify(payload, null, 2);
   }
 
   hasReplayFailures(): boolean {
@@ -325,7 +380,74 @@ export class FeedbackAdminPage implements OnInit, OnDestroy {
     }
   }
 
-  private prettyJson(raw: string): string {
+  private buildWizardPayload(setStatusOnError = true): Record<string, unknown> | null {
+    const templateId = this.selectedTemplate().trim().toUpperCase();
+
+    const fail = (message: string) => {
+      if (setStatusOnError) this.feedbackStatus.set(message);
+      return null;
+    };
+
+    switch (templateId) {
+      case 'T1': {
+        const token = this.wizardToken().trim();
+        if (!token) return fail('Inserisci token da bloccare.');
+        return {
+          token,
+          applies_to: this.wizardAppliesTo(),
+          classification: this.wizardClassification(),
+        };
+      }
+      case 'T2': {
+        const token = this.wizardToken().trim();
+        if (!token) return fail('Inserisci token.');
+        return {
+          token,
+          forced_type: this.wizardForcedTokenType(),
+        };
+      }
+      case 'T4': {
+        const entityId = this.wizardEntityId().trim();
+        if (!entityId) return fail('Seleziona una entita (entity_id).');
+        const newType = this.wizardNewType().trim();
+        if (!newType) return fail('Inserisci new_type.');
+        return { entity_id: entityId, new_type: newType, reason: this.reason().trim() || undefined };
+      }
+      case 'T5': {
+        const entityId = this.wizardEntityId().trim();
+        if (!entityId) return fail('Seleziona una entita (entity_id).');
+        const alias = this.wizardAlias().trim();
+        if (!alias) return fail('Inserisci alias.');
+        return { entity_id: entityId, alias, op: this.wizardAliasOp() };
+      }
+      case 'T6': {
+        const entityId = this.wizardEntityId().trim();
+        if (!entityId) return fail('Seleziona una entita (entity_id).');
+        const patternValue = this.wizardPatternValue().trim();
+        if (!patternValue) return fail('Inserisci pattern_value.');
+
+        const constraints: Record<string, unknown> = {};
+        const nearTokens = this.wizardNearTokens()
+          .split(',')
+          .map(item => item.trim())
+          .filter(item => item.length > 0);
+        if (nearTokens.length > 0) constraints['near_tokens'] = nearTokens;
+        const withinChars = this.wizardWithinChars();
+        if (typeof withinChars === 'number' && withinChars > 0) constraints['within_chars'] = withinChars;
+
+        return {
+          pattern_kind: this.wizardPatternKind(),
+          pattern_value: patternValue,
+          entity_id: entityId,
+          constraints,
+        };
+      }
+      default:
+        return fail('Template non supportato in modalita guidata. Passa a JSON per casi avanzati.');
+    }
+  }
+
+  prettyJsonText(raw: string): string {
     try {
       return JSON.stringify(JSON.parse(raw), null, 2);
     } catch {

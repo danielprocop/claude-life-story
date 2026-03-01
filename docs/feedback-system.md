@@ -156,6 +156,16 @@ Output action:
 
 - `PATTERN_RULE_GLOBAL`
 
+## Concetti chiave (glossario)
+
+- **Template**: una “ricetta” guidata (T1..T8). Definisce *che cosa* vuoi correggere.
+- **Payload**: i campi del template (JSON) che descrivono il caso specifico.
+- **Action**: la modifica atomica deterministica che il sistema salva e applica (es: `ADD_ALIAS`, `MERGE_ENTITIES`).
+- **Preview**: simula (dry-run). Non salva nulla. Serve per vedere actions + impatto stimato.
+- **Apply**: salva il case + le actions in Aurora, incrementa `policy_version`, avvia un replay/backfill mirato.
+- **Policy version**: versione monotona delle regole attive. Ogni apply/revert incrementa.
+- **Replay job**: job asincrono che riallinea canonicalizzazione e indici (OpenSearch) sulle entita/entry impattate.
+
 ## Workflow Operativo
 
 UI raccomandata:
@@ -164,6 +174,14 @@ UI raccomandata:
 - console admin su `/feedback-admin` (review queue, replay jobs, case history, revert, debug)
 - il vecchio endpoint feedback entry-level e stato rimosso: il feedback ufficiale passa solo dai template admin/node-level
 - la route frontend `/feedback-admin` e la navigazione sidebar sono visibili solo a utenti con ruolo `ADMIN/DEV/ANNOTATOR`
+
+Note UI:
+
+- Su `/nodes/:id` i template sono **guidati** e legati al nodo corrente: e la via piu sicura per correzioni locali.
+- Su `/feedback-admin` esistono 2 modalita:
+  - **Guidato**: campi form + payload auto-generato (consigliato)
+  - **JSON**: textarea raw (solo per casi avanzati)
+- Il bottone **Assist** su `/feedback-admin` puo precompilare template + payload da testo libero, ma non applica nulla senza conferma.
 
 Workflow API:
 
@@ -200,6 +218,18 @@ Endpoint replay status:
 
 1. apply `T5` add alias
 2. nuove mention `Felia` risolte via alias map policy
+
+## Come capire “cosa scrivere” nei campi (regole pratiche)
+
+- `Reason`: una frase breve e stabile (es: `type_correction_place`, `alias_typo`, `merge_duplicate`). Serve per audit.
+- `T4 new_type`: usa tipi semplici e coerenti (`person`, `place`, `goal`, `idea`, `organization`, `team`, `project`, `activity`).
+- `T5 alias`: metti solo la variante (non una frase). Esempio ok: `Felia`. Esempio NO: `mia madre si chiama Felia`.
+- `T6 pattern_kind`:
+  - `NORMALIZED` e quasi sempre la scelta migliore (gestisce maiuscole/spazi/punteggiatura).
+  - `EXACT` solo se vuoi matchare letteralmente (raro).
+  - `REGEX` solo se sai bene cosa stai facendo.
+- `T6 constraints`: usale per ridurre falsi positivi (`near_tokens`, `within_chars`).
+- `T1 applies_to`: preferisci `PERSON` rispetto ad `ANY` se non sei sicuro.
 
 ## Revert / Undo
 

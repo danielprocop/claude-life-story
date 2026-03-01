@@ -12,6 +12,15 @@ Reset all application data and restart from a clean state without dropping schem
 - all users and derived memory data
 - preserves table structure and indexes
 
+## Recommended (user-scoped) reset
+
+If you only need to restart your own dataset (common during algorithm tuning), prefer the user-scoped reset:
+
+- Dashboard button: **Operazioni memoria -> Reset miei dati**
+- API: `POST /api/operations/reset/me`
+
+This wipes all entries + derived memory for the authenticated user, without truncating the whole database.
+
 ## Command used
 
 ```powershell

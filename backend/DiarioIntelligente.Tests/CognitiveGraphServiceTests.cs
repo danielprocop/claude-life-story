@@ -346,6 +346,57 @@ public class CognitiveGraphServiceTests
         Assert.Empty(leiNodes);
     }
 
+    [Fact]
+    public async Task Does_Not_Create_Pronoun_Person_From_Ai_Concept()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        var analysis = new AiAnalysisResult
+        {
+            Concepts =
+            [
+                new ExtractedConcept { Label = "lei", Type = "person" }
+            ]
+        };
+
+        await fixture.ProcessAsync(user.Id, "Devo parlare con lei oggi.", analysis);
+
+        await using var db = fixture.CreateDbContext();
+        var leiKinds = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.NormalizedCanonicalName == "lei")
+            .Select(x => x.Kind)
+            .ToListAsync();
+
+        Assert.Empty(leiKinds);
+    }
+
+    [Fact]
+    public async Task Does_Not_Create_Place_For_Strong_Person_Name_After_Preposition()
+    {
+        await using var fixture = await TestFixture.CreateAsync();
+        var user = await fixture.CreateUserAsync();
+
+        var analysis = new AiAnalysisResult
+        {
+            Concepts =
+            [
+                new ExtractedConcept { Label = "Irina", Type = "person" }
+            ]
+        };
+
+        await fixture.ProcessAsync(user.Id, "Devo parlare a Irina oggi.", analysis);
+
+        await using var db = fixture.CreateDbContext();
+        var irinaKinds = await db.CanonicalEntities
+            .Where(x => x.UserId == user.Id && x.NormalizedCanonicalName == "irina")
+            .Select(x => x.Kind)
+            .ToListAsync();
+
+        Assert.Contains("person", irinaKinds);
+        Assert.DoesNotContain("place", irinaKinds);
+    }
+
     private sealed class TestFixture : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;

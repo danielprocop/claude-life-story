@@ -16,19 +16,22 @@ public class OperationsController : AuthenticatedController
     private readonly ISearchDiagnosticsService _searchDiagnosticsService;
     private readonly UserMemoryRebuildQueue _rebuildQueue;
     private readonly IEntityNormalizationService _entityNormalizationService;
+    private readonly ICognitiveGraphService _cognitiveGraphService;
 
     public OperationsController(
         AppDbContext db,
         ISearchProjectionService searchProjectionService,
         ISearchDiagnosticsService searchDiagnosticsService,
         UserMemoryRebuildQueue rebuildQueue,
-        IEntityNormalizationService entityNormalizationService)
+        IEntityNormalizationService entityNormalizationService,
+        ICognitiveGraphService cognitiveGraphService)
     {
         _db = db;
         _searchProjectionService = searchProjectionService;
         _searchDiagnosticsService = searchDiagnosticsService;
         _rebuildQueue = rebuildQueue;
         _entityNormalizationService = entityNormalizationService;
+        _cognitiveGraphService = cognitiveGraphService;
     }
 
     [HttpPost("reindex/entities")]
@@ -94,5 +97,62 @@ public class OperationsController : AuthenticatedController
         }
 
         return Ok(new LegacyFeedbackCleanupResponse(stalePolicies.Count));
+    }
+
+    [HttpPost("reset/me")]
+    public async Task<ActionResult> ResetMyData()
+    {
+        var userId = GetUserId();
+        var ct = HttpContext.RequestAborted;
+
+        // Keep feedback policy history by default. This endpoint is meant to wipe "life data"
+        // (entries + derived memory), not admin/dev configuration.
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+
+        await _cognitiveGraphService.ClearUserGraphAsync(userId, ct);
+
+        var deletedChatMessages = await _db.ChatMessages.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        var deletedGoalItems = await _db.GoalItems.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        var deletedInsights = await _db.Insights.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        var deletedEnergyLogs = await _db.EnergyLogs.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        var deletedClarificationQuestions = await _db.ClarificationQuestions.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+        var deletedPersonalPolicies = await _db.PersonalPolicies.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+
+        // Legacy concept graph (if still present for this user)
+        var conceptIds = await _db.Concepts
+            .Where(x => x.UserId == userId)
+            .Select(x => x.Id)
+            .ToListAsync(ct);
+
+        // Entries are the primary source; deleting them cascades to processing state and join tables.
+        var deletedEntries = await _db.Entries.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+
+        var deletedConnections = 0;
+        if (conceptIds.Count > 0)
+        {
+            deletedConnections = await _db.Connections
+                .Where(x => conceptIds.Contains(x.ConceptAId) || conceptIds.Contains(x.ConceptBId))
+                .ExecuteDeleteAsync(ct);
+        }
+
+        var deletedConcepts = await _db.Concepts.Where(x => x.UserId == userId).ExecuteDeleteAsync(ct);
+
+        await transaction.CommitAsync(ct);
+
+        await _searchProjectionService.ResetUserAsync(userId, ct);
+
+        return Ok(new
+        {
+            userId,
+            deletedEntries,
+            deletedChatMessages,
+            deletedGoalItems,
+            deletedInsights,
+            deletedEnergyLogs,
+            deletedClarificationQuestions,
+            deletedPersonalPolicies,
+            deletedConnections,
+            deletedConcepts
+        });
     }
 }

@@ -1,5 +1,6 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
@@ -8,6 +9,7 @@ import {
   EventNodeViewResponse,
   FeedbackApplyResponse,
   FeedbackCaseRequest,
+  FeedbackParsedActionResponse,
   FeedbackPreviewResponse,
   NodeSearchItemResponse,
   NodeViewResponse,
@@ -18,6 +20,7 @@ import {
 import { AuthService } from '../services/auth';
 
 type FeedbackTemplateMode = 'type' | 'alias_add' | 'alias_remove' | 'merge' | 'force_link' | 'block_token';
+type FeedbackHelp = { title: string; description: string; examples: string[] };
 
 @Component({
   selector: 'app-node-page',
@@ -61,6 +64,56 @@ export class NodePage implements OnInit, OnDestroy {
   readonly feedbackError = signal('');
   readonly feedbackSuccess = signal('');
   private replayPollTimer: ReturnType<typeof setTimeout> | null = null;
+
+  readonly feedbackHelp = computed<FeedbackHelp>(() => {
+    const mode = this.feedbackMode();
+    switch (mode) {
+      case 'type':
+        return {
+          title: 'T4 - Correggi tipo nodo',
+          description:
+            'Usa questo quando il nodo esiste ma e classificato male (es: PLACE vs PERSON). Non cambia le entry originali: cambia le regole/risoluzione sul grafo canonico.',
+          examples: ['Esempio: "Bressana" da PERSON -> PLACE', 'Esempio: "Stoicismo" da PERSON -> IDEA'],
+        };
+      case 'alias_add':
+        return {
+          title: 'T5 - Aggiungi alias',
+          description:
+            'Aggiunge una variante/soprannome/typo a questo nodo. In futuro, quando compare quel testo, verra linkato a questo nodo invece di crearne uno nuovo.',
+          examples: ['Esempio: Felia -> (alias di) Felicia', 'Esempio: "mamma" -> madre_of_user'],
+        };
+      case 'alias_remove':
+        return {
+          title: 'T5 - Rimuovi alias',
+          description:
+            'Rimuove un alias errato. Utile se un token e stato assorbito nel nodo sbagliato e vuoi evitare link futuri.',
+          examples: ['Esempio: rimuovi alias "Milan" da PERSON se e una squadra'],
+        };
+      case 'merge':
+        return {
+          title: 'T3 - Fondi nodi duplicati',
+          description:
+            'Fonde due nodi in uno: il canonical resta, l’altro diventa redirect. Migra alias/evidence/relazioni (quando possibile). Usa quando vedi duplicati (Felicia + Felia, Adi + Adi(fratello)).',
+          examples: ['Regola pratica: scegli come canonical quello con piu evidenze/relazioni'],
+        };
+      case 'force_link':
+        return {
+          title: 'T6 - Forza link da pattern',
+          description:
+            'Crea una regola user-scoped: quando compare un pattern (esatto/normalizzato/regex), quel testo deve linkare SEMPRE questo nodo. Utile per ruoli stabili e frasi ricorrenti.',
+          examples: ['Esempio: pattern NORMALIZED = "mia madre" -> mother_of_user', 'Esempio: pattern EXACT = "MDS" -> organization'],
+        };
+      case 'block_token':
+        return {
+          title: 'T1 - Blocca token (globale)',
+          description:
+            'Blocca un token per evitare che venga estratto come entita. Usalo per stopword/pronomi/connector (es: "inoltre", "lei", "oggi"). Ha impatto globale (tutti gli utenti).',
+          examples: ['Esempio: blocca "inoltre" per ANY', 'Esempio: blocca "lei" per PERSON'],
+        };
+      default:
+        return { title: 'Feedback', description: '', examples: [] };
+    }
+  });
 
   ngOnDestroy(): void {
     if (this.replayPollTimer) {
@@ -373,6 +426,77 @@ export class NodePage implements OnInit, OnDestroy {
     };
 
     poll();
+  }
+
+  prettyJson(raw: string): string {
+    const cleaned = (raw ?? '').trim();
+    if (!cleaned) return '';
+
+    try {
+      return JSON.stringify(JSON.parse(cleaned), null, 2);
+    } catch {
+      return cleaned;
+    }
+  }
+
+  actionLabel(actionType: string): string {
+    const normalized = (actionType ?? '').toUpperCase();
+    switch (normalized) {
+      case 'ENTITY_TYPE_CORRECTION':
+        return 'Correzione tipo nodo';
+      case 'ADD_ALIAS':
+        return 'Aggiungi alias';
+      case 'REMOVE_ALIAS':
+        return 'Rimuovi alias';
+      case 'MERGE_ENTITIES':
+        return 'Merge entita';
+      case 'FORCE_LINK_RULE':
+        return 'Force link rule';
+      case 'BLOCK_TOKEN_GLOBAL':
+        return 'Blocca token (globale)';
+      case 'TOKEN_TYPE_OVERRIDE_GLOBAL':
+        return 'Override tipo token (globale)';
+      default:
+        return actionType || 'Azione';
+    }
+  }
+
+  actionExplanation(action: FeedbackParsedActionResponse): string {
+    const type = (action.actionType ?? '').toUpperCase();
+    let payload: Record<string, unknown> | null = null;
+
+    try {
+      payload = JSON.parse(action.payloadJson) as Record<string, unknown>;
+    } catch {
+      payload = null;
+    }
+
+    if (type === 'ENTITY_TYPE_CORRECTION' && payload?.['new_type']) {
+      return `Imposta il tipo del nodo a "${payload['new_type']}".`;
+    }
+
+    if (type === 'ADD_ALIAS' && (payload?.['alias_raw'] || payload?.['alias_normalized'])) {
+      const alias = (payload['alias_raw'] ?? payload['alias_normalized']) as string;
+      return `Aggiunge alias "${alias}" al nodo.`;
+    }
+
+    if (type === 'REMOVE_ALIAS' && payload?.['alias_normalized']) {
+      return `Rimuove alias "${payload['alias_normalized']}".`;
+    }
+
+    if (type === 'MERGE_ENTITIES') {
+      return 'Fonde un nodo dentro un altro e crea un redirect verso il canonical.';
+    }
+
+    if (type === 'FORCE_LINK_RULE') {
+      return 'Forza un pattern a linkare sempre questo nodo (user-scoped).';
+    }
+
+    if (type === 'BLOCK_TOKEN_GLOBAL') {
+      return 'Blocca un token per evitare estrazioni future (globale).';
+    }
+
+    return 'Applica una regola deterministica alla pipeline di risoluzione.';
   }
 
   hasFinancialRelationship(person: PersonNodeViewResponse | null | undefined): boolean {

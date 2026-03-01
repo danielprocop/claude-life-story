@@ -114,6 +114,36 @@ textarea {
   font-size: 13px;
 }
 
+.hint {
+  margin: 0;
+  color: #607181;
+  line-height: 1.5;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  .secondary-button.active {
+    border-color: #9f4a20;
+    background: #fff6ee;
+    color: #7a3414;
+  }
+}
+
+.code-block {
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid #1f2f3f;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 10px 12px;
+  font-size: 12px;
+  overflow: auto;
+  white-space: pre;
+}
+
 .actions {
   display: flex;
   gap: 10px;

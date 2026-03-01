@@ -33,6 +33,23 @@
             Correzioni strutturate template-based (preview/apply) sul nodo canonico. Richiede ruolo
             <strong>ADMIN/DEV/ANNOTATOR</strong>.
           </p>
+          @if (feedbackHelp(); as help) {
+            <article class="help-card">
+              <p class="help-title">{{ help.title }}</p>
+              <p class="hint">{{ help.description }}</p>
+              @if (help.examples.length) {
+                <ul class="inline-list">
+                  @for (example of help.examples; track example) {
+                    <li>{{ example }}</li>
+                  }
+                </ul>
+              }
+              <p class="hint">
+                <strong>Preview</strong> simula l'impatto (non salva). <strong>Apply</strong> salva la regola,
+                incrementa la policy e avvia un replay/backfill mirato.
+              </p>
+            </article>
+          }
 
           @if (feedbackError()) {
             <p class="status error">{{ feedbackError() }}</p>
@@ -75,6 +92,7 @@
                   [ngModel]="feedbackTypeValue()"
                   (ngModelChange)="feedbackTypeValue.set($event)"
                   placeholder="Es. place, person, goal, idea" />
+                <small class="hint">Tipi comuni: person, place, goal, idea, organization, team, project, activity.</small>
               </label>
             </div>
           }
@@ -88,6 +106,7 @@
                   [ngModel]="aliasValue()"
                   (ngModelChange)="aliasValue.set($event)"
                   placeholder="Es. Felia" />
+                <small class="hint">Usalo per varianti/typo/soprannomi. Evita frasi lunghe.</small>
               </label>
             </div>
           }
@@ -111,6 +130,9 @@
                 Mantieni questo nodo come canonical
               </label>
             </div>
+            <p class="hint">
+              Il nodo "canonical" resta, l'altro diventa redirect. Se hai dubbi, lascia canonical quello con piu evidenze.
+            </p>
 
             <button type="button" class="secondary-button" (click)="searchMergeCandidates()" [disabled]="mergeSearchLoading()">
               {{ mergeSearchLoading() ? 'Ricerca...' : 'Cerca candidati' }}
@@ -141,6 +163,7 @@
                   <option value="NORMALIZED">NORMALIZED</option>
                   <option value="REGEX">REGEX</option>
                 </select>
+                <small class="hint">EXACT = match stringa; NORMALIZED = normalizzato; REGEX = espressione regolare.</small>
               </label>
               <label>
                 Pattern value
@@ -149,6 +172,7 @@
                   [ngModel]="forcePatternValue()"
                   (ngModelChange)="forcePatternValue.set($event)"
                   placeholder="Es. mia madre" />
+                <small class="hint">Esempio: "mia madre", "mamma", "Adi (fratello)".</small>
               </label>
               <label>
                 Near tokens (csv, opzionale)
@@ -164,6 +188,7 @@
                   type="number"
                   [ngModel]="forceWithinChars()"
                   (ngModelChange)="forceWithinChars.set($event ? +$event : null)" />
+                <small class="hint">Limita il match a una finestra (es. 40-120) per ridurre falsi positivi.</small>
               </label>
             </div>
           }
@@ -177,6 +202,7 @@
                   [ngModel]="blockTokenValue()"
                   (ngModelChange)="blockTokenValue.set($event)"
                   placeholder="Es. inoltre" />
+                <small class="hint">Blocca pronomi/stopword/connector: inoltre, lei, oggi, domani.</small>
               </label>
               <label>
                 Applies to
@@ -185,16 +211,17 @@
                   <option value="PERSON">PERSON</option>
                   <option value="GOAL">GOAL</option>
                 </select>
+                <small class="hint">ANY e piu aggressivo. PERSON e piu sicuro.</small>
               </label>
             </div>
           }
 
           <div class="actions">
             <button type="button" class="secondary-button" (click)="previewFeedback()" [disabled]="previewLoading() || applyLoading()">
-              {{ previewLoading() ? 'Preview...' : 'Preview impatto' }}
+              {{ previewLoading() ? 'Preview...' : 'Preview (simula)' }}
             </button>
             <button type="button" class="primary-button" (click)="applyFeedback()" [disabled]="applyLoading() || previewLoading()">
-              {{ applyLoading() ? 'Apply...' : 'Apply feedback' }}
+              {{ applyLoading() ? 'Apply...' : 'Apply (salva)' }}
             </button>
           </div>
 
@@ -218,8 +245,9 @@
                   @for (action of preview.parsedActions; track action.actionType + action.payloadJson) {
                     <article class="list-item">
                       <div>
-                        <p class="meta">{{ action.actionType }} · scope {{ action.scope }}</p>
-                        <p>{{ action.payloadJson }}</p>
+                        <p class="meta">{{ actionLabel(action.actionType) }} · scope {{ action.scope }}</p>
+                        <p class="hint">{{ actionExplanation(action) }}</p>
+                        <pre class="code-block">{{ prettyJson(action.payloadJson) }}</pre>
                       </div>
                     </article>
                   }

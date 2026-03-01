@@ -209,6 +209,57 @@ export class Dashboard implements OnInit {
     });
   }
 
+  resetMyData(): void {
+    if (this.operationsBusy()) return;
+
+    const confirmed = window.confirm(
+      'Reset dati: questa operazione elimina TUTTE le tue entry e la memoria derivata. Non e annullabile. Vuoi continuare?'
+    );
+    if (!confirmed) return;
+
+    this.operationsBusy.set(true);
+    this.operationsMessage.set('Reset dati in corso...');
+
+    this.api.resetMyData().subscribe({
+      next: (result) => {
+        this.operationsBusy.set(false);
+        this.searchHealth.set(null);
+        this.operationsMessage.set(
+          `Reset completato. Entry eliminate=${result.deletedEntries}, chat=${result.deletedChatMessages}, goals=${result.deletedGoalItems}, insights=${result.deletedInsights}.`
+        );
+
+        this.loading.set(true);
+        this.profileLoading.set(true);
+
+        this.api.getDashboard().subscribe({
+          next: (res) => {
+            this.data.set(res);
+            this.loading.set(false);
+          },
+          error: () => this.loading.set(false),
+        });
+
+        this.api.getProfile().subscribe({
+          next: (profile) => {
+            this.profile.set(profile);
+            this.profileLoading.set(false);
+          },
+          error: () => this.profileLoading.set(false),
+        });
+
+        this.api.getOpenDebts().subscribe({
+          next: (debts) => this.openDebts.set(debts),
+        });
+
+        this.reloadQuestions();
+      },
+      error: () => {
+        this.operationsBusy.set(false);
+        this.operationsMessage.set('Reset fallito. Verifica permessi o riprova tra pochi secondi.');
+      },
+    });
+  }
+
   setQuestionDraft(questionId: string, value: string): void {
     this.questionDrafts.set({
       ...this.questionDrafts(),

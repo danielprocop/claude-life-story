@@ -94,6 +94,10 @@
       cursor: pointer;
     }
 
+    button.danger {
+      background: #9b2c2c;
+    }
+
     button:disabled {
       opacity: 0.6;
       cursor: default;

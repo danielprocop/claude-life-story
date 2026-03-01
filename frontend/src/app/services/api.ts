@@ -428,6 +428,19 @@ export interface SearchBootstrapResponse {
   messages: string[];
 }
 
+export interface ResetMyDataResponse {
+  userId: string;
+  deletedEntries: number;
+  deletedChatMessages: number;
+  deletedGoalItems: number;
+  deletedInsights: number;
+  deletedEnergyLogs: number;
+  deletedClarificationQuestions: number;
+  deletedPersonalPolicies: number;
+  deletedConnections: number;
+  deletedConcepts: number;
+}
+
 export interface LegacyFeedbackCleanupResponse {
   deletedPolicies: number;
 }
@@ -756,6 +769,10 @@ export class Api {
       `${this.baseUrl}/operations/cleanup/legacy-feedback-policies`,
       {}
     );
+  }
+
+  resetMyData(): Observable<ResetMyDataResponse> {
+    return this.http.post<ResetMyDataResponse>(`${this.baseUrl}/operations/reset/me`, {});
   }
 
   previewFeedbackCase(request: FeedbackCaseRequest): Observable<FeedbackPreviewResponse> {
