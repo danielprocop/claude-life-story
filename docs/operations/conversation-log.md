@@ -550,3 +550,22 @@ Questa conversazione ha consolidato la direzione del progetto.
   - `aws apprunner resume-service --service-arn arn:aws:apprunner:eu-west-1:388592345191:service/diario-intelligente-api/d2d1e2761672485db4a74787a791c05c`
   - `aws rds start-db-instance --db-instance-identifier diario-intelligente-db --region eu-west-1`
   - `aws amplify update-branch --app-id d35nn0pbd8bxxa --branch-name main --enable-auto-build --region eu-west-1`
+
+### Aggiornamento successivo
+
+- richiesta operativa successiva: eliminare tutto lo stack AWS della app per azzerare i costi.
+- risorse eliminate:
+  - `App Runner` service `diario-intelligente-api` -> delete avviato e confermata successiva assenza da `list-services`
+  - `Amplify` app `d35nn0pbd8bxxa` -> delete eseguito e confermata assenza da `list-apps`
+  - `ECR` repository `diario-intelligente` -> delete `--force` eseguito e confermata assenza da `describe-repositories`
+  - `Cognito` user pool `eu-west-1_GUYadoxnL` -> eliminato
+  - `SSM` parameters `/diario-intelligente/prod/default-connection` e `/diario-intelligente/prod/openai-api-key` -> eliminati
+  - `CloudWatch Logs` gruppi `/aws/apprunner/.../application` e `/aws/apprunner/.../service` -> eliminati
+- risorse in cancellazione asincrona al momento del check finale:
+  - `RDS` instance `diario-intelligente-db` -> stato `deleting`
+  - `OpenSearch` domain `diario-search-dev` -> `Deleted=true`, `DomainProcessingStatus=Deleting`
+- sweep finale servizi secondari:
+  - nessuna risorsa app-specific trovata in `Lambda`, `API Gateway`, `DynamoDB`, `SQS`, `SNS`, `S3`
+- nota operativa:
+  - finché `RDS` e `OpenSearch` non scompaiono del tutto dai rispettivi `describe/list`, possono restare in billing transitorio di delete.
+  - dopo completamento delete, lo stack AWS della app è sostanzialmente azzerato lato costi.
